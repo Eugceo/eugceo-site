@@ -168,7 +168,7 @@ p{margin:0}
 .acc summary::after{content:"+";font:300 26px/1 var(--sans);color:var(--bronze);transition:transform .25s}
 .acc details[open] summary::after{transform:rotate(45deg)}
 .acc .body{padding:0 0 26px;color:var(--muted);max-width:44em;white-space:pre-line}
-.pagehead{padding:clamp(48px,8vw,104px) 0 clamp(32px,5vw,56px)}
+.pagehead{padding-top:clamp(48px,8vw,104px);padding-bottom:clamp(32px,5vw,56px)}
 .pagehead h1{font-size:clamp(40px,6vw,72px);margin:14px 0 22px}
 .pagehead .lead{white-space:pre-line}
 .offer{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--bronze)}
@@ -219,3 +219,10 @@ p{margin:0}
 main:focus{outline:none}
 .product>*,.split>*,.grid>*{min-width:0}
 
+
+.devis{border:1px solid var(--line);padding:clamp(18px,4vw,40px);background:#fff;display:flex;flex-direction:column;gap:22px;font-size:14.5px}
+.dv-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.dv-head span{color:var(--muted);font-size:13px}.dv-head .r{text-align:right}
+.dv-tbl{width:100%;border-collapse:collapse}.dv-tbl th,.dv-tbl td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.dv-tbl th{font-weight:400;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}.dv-tbl .r{text-align:right;white-space:nowrap}
+.dv-tbl tfoot td{border-bottom:0}.dv-foot{color:var(--muted);font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.note-s{margin-top:22px;font-size:13.5px;color:var(--muted)}

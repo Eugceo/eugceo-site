@@ -198,13 +198,60 @@ function vContact(){
 }
 function vLegal(k){const c=C[k]||{};return`${pageHead(c)}<section class="wrap legal">${blocks(c.sections)}</section>`}
 
-const ROUTES={"":vAccueil,creations:vCreations,prestations:vPrestations,rendezvous:vRdv,maison:vMaison,entretien:vEntretien,contact:vContact,legal:()=>vLegal("legal"),confidentialite:()=>vLegal("confidentialite")};
-const TITLES={creations:"Créations",prestations:"Prestations",rendezvous:"Rendez-vous",maison:"La Maison",entretien:"Entretien",contact:"Contact",legal:"Mentions légales",confidentialite:"Confidentialité"};
+
+/* ---------- devis (lien personnel) ---------- */
+const dfr=x=>{if(!x)return"";const[y,m,d]=String(x).slice(0,10).split("-");return d+"/"+m+"/"+y};
+const eur2=v=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).format(Number(v)||0);
+async function loadDevis(token){
+  main.innerHTML=`<section class="wrap pagehead"><p class="eyebrow">Devis</p><h1>Chargement…</h1></section>`;
+  const{data,error}=await sb.rpc("devis_public",{p_token:token});
+  if(error||!data){main.innerHTML=`<section class="wrap pagehead"><p class="eyebrow">Devis</p><h1>Ce devis est introuvable</h1><p class="lead">Le lien est peut-être incomplet. Écris-nous à <a href="mailto:contact@eugceo.fr">contact@eugceo.fr</a>.</p></section>`;return}
+  main.innerHTML=vDevis(data,token);
+}
+function vDevis(d,token){
+  const s=d.societe||{};const lignes=d.lignes||[];const n=v=>Number(String(v??"").replace(",","."))||0;
+  const tot=n(d.total)||lignes.reduce((t,l)=>t+n(l.qte||1)*n(l.prix),0)-n(d.remise)+n(d.port);
+  const expire=d.statut==="Envoyé"&&d.validite&&d.validite<new Date().toISOString().slice(0,10);
+  let action="";
+  if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci ! Nous revenons vers toi très vite pour la suite.</p>`;
+  else if(d.statut==="Refusé"||d.statut==="Annulé")action=`<p class="msg">Ce devis n'est plus valable. Écris-nous si tu souhaites un nouveau devis.</p>`;
+  else if(expire)action=`<p class="msg">Ce devis a expiré le ${dfr(d.validite)}. Écris-nous pour en recevoir un nouveau.</p>`;
+  else action=`<form class="form" id="dvAccept" data-token="${esc(token)}" novalidate style="max-width:560px">
+    <div class="fld full"><label for="f_dvnom">Ton nom et prénom</label><input id="f_dvnom" name="nom" maxlength="120" autocomplete="name" value="${esc(d.client||"")}"></div>
+    <label class="consent full"><input type="checkbox" name="ok"><span>J'ai lu ce devis et je l'accepte (bon pour accord)${n(d.acompte)?`, avec un acompte de ${eur2(d.acompte)} à verser`:""}. J'ai pris connaissance des <a href="#/cgv" target="_blank">conditions générales de vente</a>.</span></label>
+    <div class="full"><button class="btn" type="submit">J'accepte le devis</button></div><div class="full" data-out aria-live="polite"></div></form>`;
+  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Devis ${esc(d.numero||"")}</p><h1>Ton devis</h1><p class="lead">Établi le ${dfr(d.date)} pour ${esc(d.client||"")}, valable jusqu'au ${dfr(d.validite)}.</p></section>
+  <section class="wrap"><div class="devis">
+    <div class="dv-head"><div><b>${esc(s.denomination||"EUGCEO")}</b><br><span>${esc(s.forme||"")}${s.capital?" au capital de "+eur2(s.capital):""}<br>${esc(s.adresse||"")} ${esc(s.cpVille||"")}<br>SIREN ${esc(s.siren||"")}${s.villeRcs?" · RCS "+esc(s.villeRcs):""}</span></div><div class="r"><b>Devis ${esc(d.numero||"")}</b><br><span>${dfr(d.date)}</span></div></div>
+    ${d.objet?`<p><b>Objet :</b> ${esc(d.objet)}</p>`:""}
+    <table class="dv-tbl"><thead><tr><th>Désignation</th><th class="r">Qté</th><th class="r">Prix</th><th class="r">Montant</th></tr></thead><tbody>
+    ${lignes.map(l=>`<tr><td>${esc(l.libelle)}</td><td class="r">${esc(l.qte||1)}</td><td class="r">${eur2(l.prix)}</td><td class="r">${eur2(n(l.qte||1)*n(l.prix))}</td></tr>`).join("")}
+    ${n(d.remise)?`<tr><td>Remise</td><td></td><td></td><td class="r">− ${eur2(d.remise)}</td></tr>`:""}${n(d.port)?`<tr><td>Livraison</td><td></td><td></td><td class="r">${eur2(d.port)}</td></tr>`:""}
+    </tbody><tfoot><tr><td colspan="3" class="r"><b>Total</b></td><td class="r"><b>${eur2(tot)}</b></td></tr>${n(d.acompte)?`<tr><td colspan="3" class="r">Acompte à la commande</td><td class="r">${eur2(d.acompte)}</td></tr>`:""}</tfoot></table>
+    <div class="dv-foot">${d.delai?`<p>Délai : ${esc(d.delai)}</p>`:""}${d.conditions?`<p>${esc(d.conditions)}</p>`:""}${s.tva==="Oui"?"":"<p>TVA non applicable, article 293 B du CGI.</p>"}</div>
+  </div>
+  <div style="margin-top:32px">${action}</div>
+  ${d.statut==="Envoyé"?`<p class="note-s">Une question avant d'accepter ? <a href="#/contact">Écris-nous</a>.</p>`:""}</section>`;
+}
+async function accepterDevis(f){
+  const out=f.querySelector("[data-out]");const nom=f.elements.nom.value.trim();const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
+  if(nom.length<2)return show("Indique ton nom et prénom.",1);
+  if(!f.elements.ok.checked)return show("Coche la case pour confirmer ton accord.",1);
+  const btn=f.querySelector("button");btn.disabled=true;
+  const{data,error}=await sb.rpc("accepter_devis",{p_token:f.dataset.token,p_nom:nom});btn.disabled=false;
+  if(error)return show("L'envoi n'a pas fonctionné. Réessaie dans un instant.",1);
+  if(data==="ok"||data==="deja")return loadDevis(f.dataset.token);
+  show(data==="expire"?"Ce devis a expiré. Écris-nous pour en recevoir un nouveau.":"Ce devis ne peut plus être accepté. Écris-nous.",1);
+}
+
+const ROUTES={"":vAccueil,creations:vCreations,prestations:vPrestations,rendezvous:vRdv,maison:vMaison,entretien:vEntretien,contact:vContact,legal:()=>vLegal("legal"),cgv:()=>vLegal("cgv"),confidentialite:()=>vLegal("confidentialite")};
+const TITLES={cgv:"Conditions générales de vente",creations:"Créations",prestations:"Prestations",rendezvous:"Rendez-vous",maison:"La Maison",entretien:"Entretien",contact:"Contact",legal:"Mentions légales",confidentialite:"Confidentialité"};
 let lastRoute=null;
 function render(keepScroll){
   const h=decodeURIComponent(location.hash.replace(/^#\/?/,""));const [r,arg]=h.split("/");
   if(r==="reserver")return;
   document.title=TITLES[r]?TITLES[r]+" · EUGCEO":"EUGCEO · Maison de perruques";
+  if(r==="devis"){document.title="Ton devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
   main.innerHTML=r==="creation"?vCreation(arg):(ROUTES[r]||vAccueil)();
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
@@ -234,7 +281,8 @@ document.addEventListener("click",e=>{
     document.querySelectorAll(".gal-thumbs button").forEach(b=>b.setAttribute("aria-current",String(b===g)));return}
   const sc=e.target.closest("[data-scroll]");if(sc){e.preventDefault();const t=document.getElementById(sc.dataset.scroll);if(t){t.scrollIntoView({behavior:"smooth"});const i=t.querySelector("input");if(i)setTimeout(()=>i.focus({preventScroll:true}),500)}}
 });
-document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f)}});
+document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f);return}
+  const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g)}});
 
 render();
 load().then(()=>{if(!document.activeElement||!document.activeElement.closest("form"))render(true)});
