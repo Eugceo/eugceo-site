@@ -18,9 +18,11 @@ const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(_){retu
 let C=Object.assign({},window.EUG_DEFAUT||{},store.get("eug_contenu")||{});
 let P=store.get("eug_catalogue")||[];
 let ready=false;
+let B={livraisonFR:12.99,livraisonDOM:16.99,acomptePct:40};
 
 async function load(){
-  const [a,b]=await Promise.allSettled([sb.from("site_contenu").select("id,data"),sb.rpc("catalogue_public")]);
+  const [a,b,c]=await Promise.allSettled([sb.from("site_contenu").select("id,data"),sb.rpc("catalogue_public"),sb.rpc("reglages_boutique")]);
+  if(c.status==="fulfilled"&&!c.value.error&&c.value.data)B=Object.assign(B,c.value.data);
   if(a.status==="fulfilled"&&!a.value.error&&a.value.data){const o={};a.value.data.forEach(r=>{o[r.id]=r.data});C=Object.assign({},window.EUG_DEFAUT||{},o);store.set("eug_contenu",o)}
   if(b.status==="fulfilled"&&!b.value.error&&b.value.data){P=b.value.data;store.set("eug_catalogue",P)}
   ready=true;
@@ -153,13 +155,14 @@ function vCreation(id){
       <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>
       ${s.description?`<div class="prose" style="color:var(--muted)">${paras(s.description)}</div>`:""}
       ${specs.length?`<dl class="specs">${specs.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
-      <div class="actions"><a class="btn" href="#reserver" data-scroll="reserver">${dispo(p)?"Réserver cette création":"La commander"}</a></div>
+      <div class="actions">${pr!=null?`<button type="button" class="btn" data-add="${esc(p.id)}">${dispo(p)?"Ajouter au panier":`Commander · acompte ${Number(B.acomptePct)||40} %`}</button><a class="btn ghost" href="#reserver" data-scroll="reserver">Une question ?</a>`:`<a class="btn" href="#reserver" data-scroll="reserver">${dispo(p)?"Réserver cette création":"La commander"}</a>`}</div>
+      ${pr!=null&&!dispo(p)?`<p class="note-s" style="margin:0">Sur commande : ${Number(B.acomptePct)||40} % à la commande (${eur2(pr*(Number(B.acomptePct)||40)/100)}), le solde avant l'expédition.</p>`:""}
       ${notes.length?`<div class="notes">${notes.map(n=>`<p><b>${esc(n.titre)}</b>${esc(n.texte)}</p>`).join("")}</div>`:""}
     </div>
   </section>
   <section class="sec" id="reserver"><div class="formcard">
-    <h3>${dispo(p)?"Réserver cette création":"Commander cette création"}</h3>
-    <p>Laisse-nous tes coordonnées : nous te recontactons sous 48 heures ouvrées pour confirmer, répondre à tes questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape.</p>
+    <h3>${pr!=null?"Une question sur cette création ?":dispo(p)?"Réserver cette création":"Commander cette création"}</h3>
+    <p>${pr!=null?"Écris-nous : taille de bonnet, rendu, délai… Nous te répondons sous 48 heures ouvrées.":"Laisse-nous tes coordonnées : nous te recontactons sous 48 heures ouvrées pour confirmer, répondre à tes questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape."}</p>
     ${form("commande",{id:p.id,titre:t})}
   </div></section></div>`;
 }
@@ -213,7 +216,7 @@ function vDevis(d,token){
   const tot=n(d.total)||lignes.reduce((t,l)=>t+n(l.qte||1)*n(l.prix),0)-n(d.remise)+n(d.port);
   const expire=d.statut==="Envoyé"&&d.validite&&d.validite<new Date().toISOString().slice(0,10);
   let action="";
-  if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci ! Nous revenons vers toi très vite pour la suite.</p>`;
+  if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci !${d.acomptePaye?` Acompte de ${eur2(d.acomptePaye.montant)} reçu le ${dfr(d.acomptePaye.le)} : ta création est lancée.`:n(d.acompte)?"":" Nous revenons vers toi très vite pour la suite."}</p>${!d.acomptePaye&&n(d.acompte)?`<div class="actions" style="margin-top:20px"><button type="button" class="btn" data-payer-acompte="${esc(token)}">Payer l'acompte · ${eur2(d.acompte)}</button></div><p class="note-s">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay.</p><div data-out-ac aria-live="polite"></div>`:""}`;
   else if(d.statut==="Refusé"||d.statut==="Annulé")action=`<p class="msg">Ce devis n'est plus valable. Écris-nous si tu souhaites un nouveau devis.</p>`;
   else if(expire)action=`<p class="msg">Ce devis a expiré le ${dfr(d.validite)}. Écris-nous pour en recevoir un nouveau.</p>`;
   else action=`<form class="form" id="dvAccept" data-token="${esc(token)}" novalidate style="max-width:560px">
@@ -244,15 +247,91 @@ async function accepterDevis(f){
   show(data==="expire"?"Ce devis a expiré. Écris-nous pour en recevoir un nouveau.":"Ce devis ne peut plus être accepté. Écris-nous.",1);
 }
 
-const ROUTES={"":vAccueil,creations:vCreations,prestations:vPrestations,rendezvous:vRdv,maison:vMaison,entretien:vEntretien,contact:vContact,legal:()=>vLegal("legal"),cgv:()=>vLegal("cgv"),confidentialite:()=>vLegal("confidentialite")};
-const TITLES={cgv:"Conditions générales de vente",creations:"Créations",prestations:"Prestations",rendezvous:"Rendez-vous",maison:"La Maison",entretien:"Entretien",contact:"Contact",legal:"Mentions légales",confidentialite:"Confidentialité"};
+/* ---------- panier ---------- */
+let mem=null;
+function cartGet(){const c=store.get("eug_panier");return Array.isArray(c)?c:(mem||[])}
+function cartSet(c){mem=c;store.set("eug_panier",c);cartBadge()}
+function cartCount(){return cartGet().reduce((t,x)=>t+(x.qte||1),0)}
+function cartBadge(){const n=cartCount();document.querySelectorAll("[data-cart-count]").forEach(e=>{e.textContent=n?"("+n+")":"";})}
+function cartAdd(id){const c=cartGet();const p=P.find(x=>x.id===id);if(!p)return;const it=c.find(x=>x.id===id);const max=dispo(p)?Math.max(1,Number(p.disponible)||1):1;
+  if(it){if(it.qte<max)it.qte++}else c.push({id,qte:1});cartSet(c);location.hash="#/panier"}
+function lignePanier(it){const p=P.find(x=>x.id===it.id);if(!p)return null;const pr=prix(p);if(pr==null)return null;const st=dispo(p)&&Number(p.disponible)>=it.qte;
+  const pct=Number(B.acomptePct)||40;const ac=Math.round(pr*pct)/100;return{p,qte:it.qte,prix:pr,stock:st,maintenant:st?pr*it.qte:ac*it.qte,ac}}
+function vPanier(){
+  const c=cartGet();const L=c.map(lignePanier).filter(Boolean);
+  if(L.length!==c.length)cartSet(c.filter(it=>L.some(l=>l.p.id===it.id)));
+  if(!L.length)return`<section class="wrap pagehead"><p class="eyebrow">Panier</p><h1>Ton panier est vide</h1><div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Voir les créations</a></div></section>`;
+  const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
+  const sous=L.reduce((t,l)=>t+l.maintenant,0);const pct=Number(B.acomptePct)||40;const hasCmd=L.some(l=>!l.stock);
+  const reste=L.filter(l=>!l.stock).reduce((t,l)=>t+(l.prix-l.ac)*l.qte,0);
+  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Panier</p><h1>Ta commande</h1></section>
+  <section class="wrap"><div class="cart">
+    ${L.map(l=>{const ph=photos(l.p)[0];return`<div class="cart-row">
+      <a class="cart-pic" href="#/creation/${encodeURIComponent(l.p.id)}">${ph?`<img src="${esc(media(ph))}" alt="">`:`<div class="ph" style="aspect-ratio:auto;height:100%"></div>`}</a>
+      <div class="cart-info"><a href="#/creation/${encodeURIComponent(l.p.id)}"><b>${esc(titre(l.p))}</b></a>
+        <span>${l.stock?"Disponible · expédiée sous 48 h":`Sur commande · 15 à 30 jours · acompte de ${pct} % aujourd'hui, solde de ${eur2(l.prix-l.ac)} avant l'expédition`}</span>
+        <span class="cart-qty">${l.stock&&Number(l.p.disponible)>1?`<button type="button" data-cq="-1" data-id="${esc(l.p.id)}" aria-label="Moins">−</button><b>${l.qte}</b><button type="button" data-cq="1" data-id="${esc(l.p.id)}" aria-label="Plus">+</button>`:`Quantité : ${l.qte}`} · <button type="button" class="lnk" data-crm="${esc(l.p.id)}">Retirer</button></span></div>
+      <div class="cart-price">${l.stock?eur2(l.maintenant):`<span class="muted">${eur2(l.prix*l.qte)}</span><br>${eur2(l.maintenant)} aujourd'hui`}</div></div>`}).join("")}
+  </div>
+  <form class="form" id="cartForm" novalidate style="margin-top:40px;max-width:none">
+    <div class="fld full"><label for="f_liv">Livraison</label><select id="f_liv" name="livraison">
+      <option value="fr"${liv==="fr"?" selected":""}>France métropolitaine · ${eur2(B.livraisonFR)}</option>
+      <option value="dom"${liv==="dom"?" selected":""}>Outre-mer (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte) · ${eur2(B.livraisonDOM)}</option>
+      <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Paris · gratuit</option></select></div>
+    ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
+    ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
+    <div class="cart-total full">
+      <div><span>Créations</span><b>${eur2(sous)}</b></div>
+      <div><span>Livraison</span><b>${port?eur2(port):"gratuite"}</b></div>
+      <div class="big"><span>À payer aujourd'hui</span><b>${eur2(sous+port)}</b></div>
+      ${hasCmd?`<p class="note-s" style="margin:0">Reste à payer avant l'expédition des créations sur commande : ${eur2(reste)}. Nous t'enverrons un lien de paiement.</p>`:""}
+    </div>
+    <label class="consent full"><input type="checkbox" name="cgv"><span>J'ai lu et j'accepte les <a href="#/cgv" target="_blank">conditions générales de vente</a>, notamment le délai et les conditions de rétractation.</span></label>
+    <div class="full"><button class="btn" type="submit">Payer ${eur2(sous+port)}</button></div>
+    <p class="note-s full" style="margin:0">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay. Les pièces disponibles sont réservées pour toi pendant le paiement.</p>
+    <div class="full" data-out aria-live="polite"></div>
+  </form></section>`;
+}
+async function payer(f){
+  const out=f.querySelector("[data-out]");const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
+  const v=n=>String(f.elements[n]?f.elements[n].value:"").trim();
+  if(v("nom").length<2)return show("Indique ton nom et prénom.",1);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v("email")))return show("Indique une adresse e-mail valide : ta confirmation y sera envoyée.",1);
+  if(!f.elements.cgv.checked)return show("Coche la case pour accepter les conditions générales de vente.",1);
+  const btn=f.querySelector("button[type=submit]");btn.disabled=true;show("Redirection vers le paiement sécurisé…");
+  try{
+    const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},cgv:true}});
+    let d=data;if(error){try{d=await error.context.json()}catch(_){d={}}}
+    if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
+    btn.disabled=false;
+    if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écris-nous depuis la fiche de la création (« Une question ? ») : nous te recontactons pour la commande.",1);
+    if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de ton panier vient d'être réservée par une autre cliente. Vérifie ton panier.",1)}
+    show("Le paiement n'a pas pu démarrer. Réessaie dans un instant ou écris-nous.",1);
+  }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessaie dans un instant.",1)}
+}
+function vMerci(q){
+  const solde=/solde=1/.test(q||"");if(!solde)cartSet([]);
+  return`<section class="wrap pagehead"><p class="eyebrow">Merci</p><h1>${solde?"Solde reçu":"Ta commande est confirmée"}</h1>
+  <div class="lead prose"><p>${solde?"Merci, ton paiement est bien reçu. Ta création part très vite : nous t'envoyons le suivi dès l'expédition.":"Merci pour ta confiance. Ton paiement est bien reçu et un e-mail de confirmation vient de partir. Nous préparons ta création et revenons vers toi très vite."}</p></div>
+  <div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Continuer la visite</a></div></section>`;
+}
+
+async function payerAcompte(b){
+  b.disabled=true;const out=document.querySelector("[data-out-ac]");
+  const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"devis",token:b.dataset.payerAcompte}});
+  let d=data;if(error){try{d=await error.context.json()}catch(_){d={}}}
+  if(d&&d.url){location.href=d.url;return}
+  b.disabled=false;if(out)out.innerHTML=`<p class="msg err">${d&&d.error==="non_configure"?"Le paiement en ligne n'est pas encore ouvert : nous te contactons pour régler l'acompte.":d&&d.error==="deja"?"Cet acompte est déjà payé.":"Le paiement n'a pas pu démarrer. Réessaie dans un instant."}</p>`;
+}
+const ROUTES={"":vAccueil,creations:vCreations,prestations:vPrestations,rendezvous:vRdv,maison:vMaison,entretien:vEntretien,contact:vContact,legal:()=>vLegal("legal"),cgv:()=>vLegal("cgv"),panier:vPanier,confidentialite:()=>vLegal("confidentialite")};
+const TITLES={panier:"Panier",merci:"Merci",cgv:"Conditions générales de vente",creations:"Créations",prestations:"Prestations",rendezvous:"Rendez-vous",maison:"La Maison",entretien:"Entretien",contact:"Contact",legal:"Mentions légales",confidentialite:"Confidentialité"};
 let lastRoute=null;
 function render(keepScroll){
-  const h=decodeURIComponent(location.hash.replace(/^#\/?/,""));const [r,arg]=h.split("/");
+  const full=decodeURIComponent(location.hash.replace(/^#\/?/,""));const q=full.includes("?")?full.slice(full.indexOf("?")+1):"";const h=full.split("?")[0];const [r,arg]=h.split("/");
   if(r==="reserver")return;
   document.title=TITLES[r]?TITLES[r]+" · EUGCEO":"EUGCEO · Maison de perruques";
   if(r==="devis"){document.title="Ton devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
-  main.innerHTML=r==="creation"?vCreation(arg):(ROUTES[r]||vAccueil)();
+  main.innerHTML=r==="creation"?vCreation(arg):r==="merci"?vMerci(q):(ROUTES[r]||vAccueil)();
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
   const route=r+"/"+(arg||"");
@@ -273,6 +352,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&nav.classList.conta
 window.addEventListener("hashchange",()=>render());
 window.addEventListener("scroll",()=>$("#hd").classList.toggle("scrolled",scrollY>8),{passive:true});
 document.addEventListener("click",e=>{
+  const ad=e.target.closest("[data-add]");if(ad){cartAdd(ad.dataset.add);return}
+  const cq=e.target.closest("[data-cq]");if(cq){const c=cartGet();const it=c.find(x=>x.id===cq.dataset.id);const p=P.find(x=>x.id===cq.dataset.id);if(it&&p){it.qte=Math.max(1,Math.min(Number(p.disponible)||1,it.qte+Number(cq.dataset.cq)))}cartSet(c);render(true);return}
+  const cr=e.target.closest("[data-crm]");if(cr){cartSet(cartGet().filter(x=>x.id!==cr.dataset.crm));render(true);return}
+  const pa=e.target.closest("[data-payer-acompte]");if(pa){payerAcompte(pa);return}
   const f=e.target.closest("[data-f]");if(f){filtre=f.dataset.f;render(true);return}
   const g=e.target.closest("[data-g]");
   if(g){const h=decodeURIComponent(location.hash.replace(/^#\/?/,"")).split("/");const p=P.find(x=>x.id===h[1]);if(!p)return;
@@ -282,8 +365,11 @@ document.addEventListener("click",e=>{
   const sc=e.target.closest("[data-scroll]");if(sc){e.preventDefault();const t=document.getElementById(sc.dataset.scroll);if(t){t.scrollIntoView({behavior:"smooth"});const i=t.querySelector("input");if(i)setTimeout(()=>i.focus({preventScroll:true}),500)}}
 });
 document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f);return}
-  const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g)}});
+  const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g);return}
+  const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
+document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone"].forEach(k=>keep[k]=f.elements[k].value);render(true);const g=document.getElementById("cartForm");if(g)["nom","email","telephone"].forEach(k=>g.elements[k].value=keep[k])}});
 
+cartBadge();
 render();
 load().then(()=>{if(!document.activeElement||!document.activeElement.closest("form"))render(true)});
 })();
