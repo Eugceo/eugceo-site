@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EUGCEO · Maison de perruques</title>
+<meta name="description" content="EUGCEO, maison de perruques en cheveux raw et virgin, préparées et personnalisées à la main. Créations, pose, entretien.">
+<meta name="theme-color" content="#111111">
+<meta property="og:title" content="EUGCEO · Maison de perruques">
+<meta property="og:description" content="Des perruques en cheveux raw et virgin, préparées et personnalisées une à une.">
+<meta property="og:image" content="https://eugceo.fr/img/icon-512.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="img/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<link rel="preload" href="fonts/cormorant-garamond-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/poppins-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="hd" id="hd">
+  <div class="hd-in">
+    <a class="logo" href="#/" aria-label="EUGCEO, accueil">EUGCEO</a>
+    <nav class="nav" id="nav" aria-label="Menu principal">
+      <a href="#/creations">Créations</a>
+      <a href="#/prestations">Prestations</a>
+      <a href="#/maison">La Maison</a>
+      <a href="#/entretien">Entretien</a>
+      <a href="#/contact">Contact</a>
+      <a class="nav-cta" href="#/rendezvous">Rendez-vous</a>
+    </nav>
+    <button class="burger" id="burger" aria-expanded="false" aria-controls="nav" aria-label="Ouvrir le menu"><span></span><span></span></button>
+  </div>
+</header>
+<main id="main" tabindex="-1"><div class="loading" aria-live="polite">Chargement…</div></main>
+<footer class="ft">
+  <div class="ft-in">
+    <div class="ft-brand"><span class="logo">EUGCEO</span><p>Maison de perruques et de beauté.<br>Paris.</p></div>
+    <nav class="ft-nav" aria-label="Pied de page">
+      <a href="#/creations">Créations</a><a href="#/prestations">Prestations</a><a href="#/rendezvous">Rendez-vous</a><a href="#/entretien">Entretien</a><a href="#/contact">Contact</a>
+    </nav>
+    <div class="ft-contact" id="ftContact"></div>
+  </div>
+  <div class="ft-legal"><span>© <span id="yr"></span> EUGCEO</span><a href="#/legal">Mentions légales</a><a href="#/confidentialite">Confidentialité</a></div>
+</footer>
+<script src="vendor/supabase.js"></script>
+<script src="defaut.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
