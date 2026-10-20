@@ -148,7 +148,7 @@ function vCreation(id){
       ${items.length>1?`<div class="gal-thumbs">${items.map((it,i)=>`<button type="button" data-g="${i}" aria-current="${i===0}" aria-label="${isVid(it)?"Vidéo":"Photo "+(i+1)}">${isVid(it)?`<video src="${esc(media(it))}" muted playsinline preload="metadata"></video><span class="play">▶</span>`:`<img src="${esc(media(it))}" alt="" loading="lazy">`}</button>`).join("")}</div>`:""}
     </div>
     <div class="info">
-      <span class="tag${dispo(p)?" ok":""}" style="align-self:flex-start">${dispo(p)?"Disponible · expédiée sous 48 h":"Sur commande · environ 2 semaines"}</span>
+      <span class="tag${dispo(p)?" ok":""}" style="align-self:flex-start">${dispo(p)?"Disponible · expédiée sous 48 h":"Sur commande · 15 à 30 jours"}</span>
       <h1 style="font-size:clamp(34px,4.4vw,52px)">${esc(t)}</h1>
       <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>
       ${s.description?`<div class="prose" style="color:var(--muted)">${paras(s.description)}</div>`:""}
