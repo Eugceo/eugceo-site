@@ -277,7 +277,7 @@ function vPanier(){
     <div class="fld full"><label for="f_liv">Livraison</label><select id="f_liv" name="livraison">
       <option value="fr"${liv==="fr"?" selected":""}>France métropolitaine · ${eur2(B.livraisonFR)}</option>
       <option value="dom"${liv==="dom"?" selected":""}>Outre-mer (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte) · ${eur2(B.livraisonDOM)}</option>
-      <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Paris · gratuit</option></select></div>
+      <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Rennes · gratuit</option></select></div>
     ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
     ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
     <div class="cart-total full">
