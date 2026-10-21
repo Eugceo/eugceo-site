@@ -240,3 +240,20 @@ main:focus{outline:none}
 @media (max-width:560px){.cart-row{grid-template-columns:72px 1fr}.cart-price{grid-column:2;text-align:left}}
 .cart-total{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:18px}
 .cart-total>div{display:flex;justify-content:space-between;gap:20px;font-size:15px}.cart-total .big{font:500 24px/1.2 var(--serif);border-top:1px solid var(--ink);padding-top:12px;margin-top:4px}
+
+/* ---------- page d'attente ---------- */
+.attente .nav,.attente .hd-cart,.attente .burger,.attente .ft-nav,.attente #ftContact a[href="#/rendezvous"]{display:none!important}
+@media (min-width:861px){.hero.attente .hero-txt{max-width:660px}}
+.hero.attente h1{max-width:12em}
+.hero .at-txt p{margin:0 0 14px;max-width:32em}
+.at-form{margin-top:22px;max-width:560px}
+.hero.attente .fld label{color:rgba(255,255,255,.62)}
+.hero.attente .fld input{color:#fff;border-bottom-color:rgba(255,255,255,.35)}
+.hero.attente .fld input:focus{border-bottom-color:#fff}
+.hero.attente .consent{color:rgba(255,255,255,.7)}
+.hero.attente .consent a{color:#fff}
+.hero.attente .consent input{accent-color:#fff}
+.hero.attente .msg{margin:0;color:#fff;background:rgba(255,255,255,.08);border-left-color:var(--clair);font-size:14px}
+.hero.attente .msg.err{color:#f3c2b9;border-left-color:#e08a7c}
+body.apercu .hd::after{content:"Aperçu privé · le site est fermé au public";position:absolute;left:0;right:0;top:100%;background:var(--marron);color:#fff;font:400 10.5px/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;text-align:center;padding:6px 8px}
+.attente .ft{margin-top:0}

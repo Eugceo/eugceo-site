@@ -19,9 +19,14 @@ let C=Object.assign({},window.EUG_DEFAUT||{},store.get("eug_contenu")||{});
 let P=store.get("eug_catalogue")||[];
 let ready=false;
 let B={livraisonFR:12.99,livraisonDOM:16.99,acomptePct:40};
+try{const u=new URLSearchParams(location.search).get("apercu");if(u){store.set("eug_apercu",u);history.replaceState(null,"",location.pathname+location.hash)}}catch(_){}
+let AP=store.get("eug_apercu");let apOk=!!AP;
+const ferme=()=>!!(C.attente&&C.attente.ouvert===false)&&!apOk;
+const OUVERT_TJ=["legal","cgv","confidentialite","devis","merci"];
 
 async function load(){
-  const [a,b,c]=await Promise.allSettled([sb.from("site_contenu").select("id,data"),sb.rpc("catalogue_public"),sb.rpc("reglages_boutique")]);
+  const [a,b,c,d]=await Promise.allSettled([sb.from("site_contenu").select("id,data"),AP?sb.rpc("catalogue_apercu",{p_code:AP}):sb.rpc("catalogue_public"),sb.rpc("reglages_boutique"),AP?sb.rpc("apercu_ok",{p_code:AP}):Promise.resolve({data:false})]);
+  if(AP&&d.status==="fulfilled"&&!d.value.error){apOk=d.value.data===true;if(!apOk){AP=null;try{localStorage.removeItem("eug_apercu")}catch(_){}}}
   if(c.status==="fulfilled"&&!c.value.error&&c.value.data)B=Object.assign(B,c.value.data);
   if(a.status==="fulfilled"&&!a.value.error&&a.value.data){const o={};a.value.data.forEach(r=>{o[r.id]=r.data});C=Object.assign({},window.EUG_DEFAUT||{},o);store.set("eug_contenu",o)}
   if(b.status==="fulfilled"&&!b.value.error&&b.value.data){P=b.value.data;store.set("eug_catalogue",P)}
@@ -88,6 +93,36 @@ async function submit(f){
   btn.disabled=false;
   if(error)return show("L'envoi n'a pas fonctionné. Réessaie, ou écris-nous à "+((C.contact||{}).email||"contact@eugceo.fr")+".",1);
   f.reset();show("Merci "+nom.split(" ")[0]+", ta demande est bien arrivée. Nous te répondons sous 48 heures ouvrées.");
+}
+
+/* ---------- page d'attente ---------- */
+function vAttente(){const a=C.attente||{};
+  return`<section class="hero attente"><div class="hero-txt fade">
+    ${a.surTitre?`<p class="eyebrow">${esc(a.surTitre)}</p>`:""}<h1>${esc(a.titre||"La Maison ouvre bientôt")}</h1>
+    <div class="at-txt">${paras(a.texte)}</div>
+    <form class="form at-form" id="attForm" novalidate>
+      ${field("nom","Prénom","text",{req:1,ac:"given-name",max:60})}${field("email","E-mail","email",{req:1,ac:"email"})}
+      <div class="hp" aria-hidden="true"><label>Ne pas remplir<input name="site_web" tabindex="-1" autocomplete="off"></label></div>
+      <label class="consent full"><input type="checkbox" name="ok"><span>J'accepte de recevoir l'e-mail d'ouverture d'EUGCEO. Une seule annonce, puis plus rien sans ton accord. Voir <a href="#/confidentialite">Confidentialité</a>.</span></label>
+      <div class="full"><button class="btn light" type="submit">Être prévenue de l'ouverture</button></div>
+      <div class="full" data-out aria-live="polite"></div>
+    </form>
+  </div><div class="hero-pic">${a.image?`<img src="${esc(media(a.image))}" alt="">`:`<div class="wm">${MONO}</div>`}</div></section>`;
+}
+async function inscrire(f){
+  const out=f.querySelector("[data-out]");const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
+  const v=n=>String(f.elements[n]?f.elements[n].value:"").trim();
+  if(v("site_web"))return show("Merci, c'est noté.");
+  const nom=v("nom"),email=v("email");
+  if(nom.length<2)return show("Indique ton prénom.",1);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return show("L'adresse e-mail semble incomplète.",1);
+  if(!f.elements.ok.checked)return show("Coche la case pour recevoir l'e-mail d'ouverture.",1);
+  const btn=f.querySelector("button[type=submit]");btn.disabled=true;
+  const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+  const{error}=await sb.from("demandes").insert({id,data:{type:"liste",nom,email,consentement:true,statut:"Nouvelle",envoyeLe:new Date().toISOString(),page:"attente"}});
+  btn.disabled=false;
+  if(error)return show("L'inscription n'a pas fonctionné. Réessaie dans un instant.",1);
+  f.reset();show("Merci "+nom.split(" ")[0]+", c'est noté. Tu seras prévenue dès l'ouverture.");
 }
 
 /* ---------- pages ---------- */
@@ -300,10 +335,11 @@ async function payer(f){
   if(!f.elements.cgv.checked)return show("Coche la case pour accepter les conditions générales de vente.",1);
   const btn=f.querySelector("button[type=submit]");btn.disabled=true;show("Redirection vers le paiement sécurisé…");
   try{
-    const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},cgv:true}});
+    const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",apercu:AP||"",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},cgv:true}});
     let d=data;if(error){try{d=await error.context.json()}catch(_){d={}}}
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
+    if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
     if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écris-nous depuis la fiche de la création (« Une question ? ») : nous te recontactons pour la commande.",1);
     if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de ton panier vient d'être réservée par une autre cliente. Vérifie ton panier.",1)}
     show("Le paiement n'a pas pu démarrer. Réessaie dans un instant ou écris-nous.",1);
@@ -330,6 +366,10 @@ function render(keepScroll){
   const full=decodeURIComponent(location.hash.replace(/^#\/?/,""));const q=full.includes("?")?full.slice(full.indexOf("?")+1):"";const h=full.split("?")[0];const [r,arg]=h.split("/");
   if(r==="reserver")return;
   document.title=TITLES[r]?TITLES[r]+" · EUGCEO":"EUGCEO · Maison de perruques";
+  const att=ferme()&&!OUVERT_TJ.includes(r);
+  document.body.classList.toggle("attente",ferme());
+  document.body.classList.toggle("apercu",apOk&&!!(C.attente&&C.attente.ouvert===false));
+  if(att){document.title="EUGCEO · Bientôt";main.innerHTML=vAttente();lastRoute="attente";footer();return}
   if(r==="devis"){document.title="Ton devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
   main.innerHTML=r==="creation"?vCreation(arg):r==="merci"?vMerci(q):(ROUTES[r]||vAccueil)();
   main.classList.toggle("nomargin",false);
@@ -366,10 +406,11 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f);return}
   const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g);return}
+  const af=e.target.closest("#attForm");if(af){e.preventDefault();inscrire(af);return}
   const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
 document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone"].forEach(k=>keep[k]=f.elements[k].value);render(true);const g=document.getElementById("cartForm");if(g)["nom","email","telephone"].forEach(k=>g.elements[k].value=keep[k])}});
 
 cartBadge();
-render();
+if(store.get("eug_contenu"))render();
 load().then(()=>{if(!document.activeElement||!document.activeElement.closest("form"))render(true)});
 })();
