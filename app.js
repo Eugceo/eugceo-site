@@ -60,10 +60,10 @@ function form(kind,extra){
   if(kind==="rdv"){
     const prest=((C.prestations||{}).sections||[]).map(s=>s.titre).filter(Boolean);
     fields.push(field("prestation","Prestation","select",{list:[...prest,"Essayage","Autre"]}));
-    fields.push(field("disponibilites","Tes disponibilités","text",{ph:"ex. samedi matin, mardi après 18 h",max:300}));
+    fields.push(field("disponibilites","Vos disponibilités","text",{ph:"ex. samedi matin, mardi après 18 h",max:300}));
   }
   fields.push(field("email","E-mail","email",{ac:"email"}),field("telephone","Téléphone","tel",{ac:"tel",max:30}));
-  fields.push(field("message",kind==="commande"?"Ton message (taille de bonnet, questions…)":"Message","textarea",{full:1,req:kind==="contact"}));
+  fields.push(field("message",kind==="commande"?"Votre message (taille de bonnet, questions…)":"Message","textarea",{full:1,req:kind==="contact"}));
   return`<form class="form" data-kind="${kind}"${extra?` data-pid="${esc(extra.id)}" data-ptitre="${esc(extra.titre)}"`:""} novalidate>
     ${fields.join("")}
     <div class="hp" aria-hidden="true"><label>Ne pas remplir<input name="site_web" tabindex="-1" autocomplete="off"></label></div>
@@ -76,14 +76,14 @@ async function submit(f){
   const out=f.querySelector("[data-out]");const btn=f.querySelector("button[type=submit]");
   const v=n=>{const e=f.elements[n];return e?String(e.value||"").trim():""};
   const show=(t,err)=>{out.innerHTML=`<p class="msg${err?" err":""}">${esc(t)}</p>`};
-  if(v("site_web"))return show("Merci, ta demande est bien envoyée.");
+  if(v("site_web"))return show("Merci, votre demande est bien envoyée.");
   const nom=v("nom"),email=v("email"),tel=v("telephone"),msg=v("message");
-  if(nom.length<2)return show("Indique ton nom.",1);
-  if(!email&&!tel)return show("Laisse au moins un e-mail ou un numéro de téléphone pour qu'on puisse te répondre.",1);
+  if(nom.length<2)return show("Indiquez votre nom.",1);
+  if(!email&&!tel)return show("Laissez au moins un e-mail ou un numéro de téléphone pour que nous puissions vous répondre.",1);
   if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return show("L'adresse e-mail semble incomplète.",1);
   if(tel&&tel.replace(/\D/g,"").length<9)return show("Le numéro de téléphone semble incomplet.",1);
-  if(f.dataset.kind==="contact"&&msg.length<2)return show("Écris ton message.",1);
-  if(!f.elements.ok.checked)return show("Coche la case d'accord pour qu'on puisse te répondre.",1);
+  if(f.dataset.kind==="contact"&&msg.length<2)return show("Écrivez votre message.",1);
+  if(!f.elements.ok.checked)return show("Cochez la case d'accord pour que nous puissions vous répondre.",1);
   const data={type:f.dataset.kind,nom,email,telephone:tel,message:msg,statut:"Nouvelle",envoyeLe:new Date().toISOString(),page:location.hash};
   if(f.dataset.pid){data.produitId=f.dataset.pid;data.produit=f.dataset.ptitre}
   if(f.dataset.kind==="rdv"){data.prestation=v("prestation");data.disponibilites=v("disponibilites")}
@@ -91,8 +91,8 @@ async function submit(f){
   const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   const{error}=await sb.from("demandes").insert({id,data});
   btn.disabled=false;
-  if(error)return show("L'envoi n'a pas fonctionné. Réessaie, ou écris-nous à "+((C.contact||{}).email||"contact@eugceo.fr")+".",1);
-  f.reset();show("Merci "+nom.split(" ")[0]+", ta demande est bien arrivée. Nous te répondons sous 48 heures ouvrées.");
+  if(error)return show("L'envoi n'a pas fonctionné. Réessayez, ou écrivez-nous à "+((C.contact||{}).email||"contact@eugceo.fr")+".",1);
+  f.reset();show("Merci "+nom.split(" ")[0]+", votre demande est bien arrivée. Nous vous répondons sous 48 heures ouvrées.");
 }
 
 /* ---------- page d'attente ---------- */
@@ -103,7 +103,7 @@ function vAttente(){const a=C.attente||{};
     <form class="form at-form" id="attForm" novalidate>
       ${field("nom","Prénom","text",{req:1,ac:"given-name",max:60})}${field("email","E-mail","email",{req:1,ac:"email"})}
       <div class="hp" aria-hidden="true"><label>Ne pas remplir<input name="site_web" tabindex="-1" autocomplete="off"></label></div>
-      <label class="consent full"><input type="checkbox" name="ok"><span>J'accepte de recevoir l'e-mail d'ouverture d'EUGCEO. Une seule annonce, puis plus rien sans ton accord. Voir <a href="#/confidentialite">Confidentialité</a>.</span></label>
+      <label class="consent full"><input type="checkbox" name="ok"><span>J'accepte de recevoir l'e-mail d'ouverture d'EUGCEO. Une seule annonce, puis plus rien sans votre accord. Voir <a href="#/confidentialite">Confidentialité</a>.</span></label>
       <div class="full"><button class="btn light" type="submit">Être prévenue de l'ouverture</button></div>
       <div class="full" data-out aria-live="polite"></div>
     </form>
@@ -114,15 +114,15 @@ async function inscrire(f){
   const v=n=>String(f.elements[n]?f.elements[n].value:"").trim();
   if(v("site_web"))return show("Merci, c'est noté.");
   const nom=v("nom"),email=v("email");
-  if(nom.length<2)return show("Indique ton prénom.",1);
+  if(nom.length<2)return show("Indiquez votre prénom.",1);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return show("L'adresse e-mail semble incomplète.",1);
-  if(!f.elements.ok.checked)return show("Coche la case pour recevoir l'e-mail d'ouverture.",1);
+  if(!f.elements.ok.checked)return show("Cochez la case pour recevoir l'e-mail d'ouverture.",1);
   const btn=f.querySelector("button[type=submit]");btn.disabled=true;
   const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
   const{error}=await sb.from("demandes").insert({id,data:{type:"liste",nom,email,consentement:true,statut:"Nouvelle",envoyeLe:new Date().toISOString(),page:"attente"}});
   btn.disabled=false;
-  if(error)return show("L'inscription n'a pas fonctionné. Réessaie dans un instant.",1);
-  f.reset();show("Merci "+nom.split(" ")[0]+", c'est noté. Tu seras prévenue dès l'ouverture.");
+  if(error)return show("L'inscription n'a pas fonctionné. Réessayez dans un instant.",1);
+  f.reset();show("Merci "+nom.split(" ")[0]+", c'est noté. Vous serez prévenue dès l'ouverture.");
 }
 
 /* ---------- pages ---------- */
@@ -147,7 +147,7 @@ function vAccueil(){
   ${sec.length?`<section class="sec"><div class="wrap"><div class="pillars">${sec.map((s,i)=>`<div class="pillar"><span class="n">${["I","II","III","IV","V","VI"][i]||i+1}</span><h3>${esc(s.titre)}</h3><p>${esc(s.texte)}</p></div>`).join("")}</div></div></section>`:""}
   <section class="sec"><div class="wrap">
     <div class="head"><div><p class="eyebrow">Les créations</p><h2>Préparées une à une</h2></div><a class="more" href="#/creations">Tout voir</a></div>
-    ${sel.length?`<div class="grid">${sel.map(card).join("")}</div>`:`<p class="lead">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écris-nous</a> : nous te présentons les pièces disponibles.</p>`}
+    ${sel.length?`<div class="grid">${sel.map(card).join("")}</div>`:`<p class="lead">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écris-nous</a> : nous vous présentons les pièces disponibles.</p>`}
   </div></section>
   <section class="sec band nomargin"><div class="wrap split">
     <div>${visual(m,"dark")}</div>
@@ -197,7 +197,7 @@ function vCreation(id){
   </section>
   <section class="sec" id="reserver"><div class="formcard">
     <h3>${pr!=null?"Une question sur cette création ?":dispo(p)?"Réserver cette création":"Commander cette création"}</h3>
-    <p>${pr!=null?"Écris-nous : taille de bonnet, rendu, délai… Nous te répondons sous 48 heures ouvrées.":"Laisse-nous tes coordonnées : nous te recontactons sous 48 heures ouvrées pour confirmer, répondre à tes questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape."}</p>
+    <p>${pr!=null?"Écris-nous : taille de bonnet, rendu, délai… Nous vous répondons sous 48 heures ouvrées.":"Laissez-nous vos coordonnées : nous vous recontactons sous 48 heures ouvrées pour confirmer, répondre à vos questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape."}</p>
     ${form("commande",{id:p.id,titre:t})}
   </div></section></div>`;
 }
@@ -251,14 +251,14 @@ function vDevis(d,token){
   const tot=n(d.total)||lignes.reduce((t,l)=>t+n(l.qte||1)*n(l.prix),0)-n(d.remise)+n(d.port);
   const expire=d.statut==="Envoyé"&&d.validite&&d.validite<new Date().toISOString().slice(0,10);
   let action="";
-  if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci !${d.acomptePaye?` Acompte de ${eur2(d.acomptePaye.montant)} reçu le ${dfr(d.acomptePaye.le)} : ta création est lancée.`:n(d.acompte)?"":" Nous revenons vers toi très vite pour la suite."}</p>${!d.acomptePaye&&n(d.acompte)?`<div class="actions" style="margin-top:20px"><button type="button" class="btn" data-payer-acompte="${esc(token)}">Payer l'acompte · ${eur2(d.acompte)}</button></div><p class="note-s">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay.</p><div data-out-ac aria-live="polite"></div>`:""}`;
-  else if(d.statut==="Refusé"||d.statut==="Annulé")action=`<p class="msg">Ce devis n'est plus valable. Écris-nous si tu souhaites un nouveau devis.</p>`;
+  if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci !${d.acomptePaye?` Acompte de ${eur2(d.acomptePaye.montant)} reçu le ${dfr(d.acomptePaye.le)} : votre création est lancée.`:n(d.acompte)?"":" Nous revenons vers vous très vite pour la suite."}</p>${!d.acomptePaye&&n(d.acompte)?`<div class="actions" style="margin-top:20px"><button type="button" class="btn" data-payer-acompte="${esc(token)}">Payer l'acompte · ${eur2(d.acompte)}</button></div><p class="note-s">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay.</p><div data-out-ac aria-live="polite"></div>`:""}`;
+  else if(d.statut==="Refusé"||d.statut==="Annulé")action=`<p class="msg">Ce devis n'est plus valable. Écrivez-nous si vous souhaitez un nouveau devis.</p>`;
   else if(expire)action=`<p class="msg">Ce devis a expiré le ${dfr(d.validite)}. Écris-nous pour en recevoir un nouveau.</p>`;
   else action=`<form class="form" id="dvAccept" data-token="${esc(token)}" novalidate style="max-width:560px">
-    <div class="fld full"><label for="f_dvnom">Ton nom et prénom</label><input id="f_dvnom" name="nom" maxlength="120" autocomplete="name" value="${esc(d.client||"")}"></div>
+    <div class="fld full"><label for="f_dvnom">Votre nom et prénom</label><input id="f_dvnom" name="nom" maxlength="120" autocomplete="name" value="${esc(d.client||"")}"></div>
     <label class="consent full"><input type="checkbox" name="ok"><span>J'ai lu ce devis et je l'accepte (bon pour accord)${n(d.acompte)?`, avec un acompte de ${eur2(d.acompte)} à verser`:""}. J'ai pris connaissance des <a href="#/cgv" target="_blank">conditions générales de vente</a>.</span></label>
     <div class="full"><button class="btn" type="submit">J'accepte le devis</button></div><div class="full" data-out aria-live="polite"></div></form>`;
-  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Devis ${esc(d.numero||"")}</p><h1>Ton devis</h1><p class="lead">Établi le ${dfr(d.date)} pour ${esc(d.client||"")}, valable jusqu'au ${dfr(d.validite)}.</p></section>
+  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Devis ${esc(d.numero||"")}</p><h1>Votre devis</h1><p class="lead">Établi le ${dfr(d.date)} pour ${esc(d.client||"")}, valable jusqu'au ${dfr(d.validite)}.</p></section>
   <section class="wrap"><div class="devis">
     <div class="dv-head"><div><b>${esc(s.denomination||"EUGCEO")}</b><br><span>${esc(s.forme||"")}${s.capital?" au capital de "+eur2(s.capital):""}<br>${esc(s.adresse||"")} ${esc(s.cpVille||"")}<br>SIREN ${esc(s.siren||"")}${s.villeRcs?" · RCS "+esc(s.villeRcs):""}</span></div><div class="r"><b>Devis ${esc(d.numero||"")}</b><br><span>${dfr(d.date)}</span></div></div>
     ${d.objet?`<p><b>Objet :</b> ${esc(d.objet)}</p>`:""}
@@ -273,11 +273,11 @@ function vDevis(d,token){
 }
 async function accepterDevis(f){
   const out=f.querySelector("[data-out]");const nom=f.elements.nom.value.trim();const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
-  if(nom.length<2)return show("Indique ton nom et prénom.",1);
-  if(!f.elements.ok.checked)return show("Coche la case pour confirmer ton accord.",1);
+  if(nom.length<2)return show("Indiquez votre nom et prénom.",1);
+  if(!f.elements.ok.checked)return show("Cochez la case pour confirmer votre accord.",1);
   const btn=f.querySelector("button");btn.disabled=true;
   const{data,error}=await sb.rpc("accepter_devis",{p_token:f.dataset.token,p_nom:nom});btn.disabled=false;
-  if(error)return show("L'envoi n'a pas fonctionné. Réessaie dans un instant.",1);
+  if(error)return show("L'envoi n'a pas fonctionné. Réessayez dans un instant.",1);
   if(data==="ok"||data==="deja")return loadDevis(f.dataset.token);
   show(data==="expire"?"Ce devis a expiré. Écris-nous pour en recevoir un nouveau.":"Ce devis ne peut plus être accepté. Écris-nous.",1);
 }
@@ -295,11 +295,11 @@ function lignePanier(it){const p=P.find(x=>x.id===it.id);if(!p)return null;const
 function vPanier(){
   const c=cartGet();const L=c.map(lignePanier).filter(Boolean);
   if(L.length!==c.length)cartSet(c.filter(it=>L.some(l=>l.p.id===it.id)));
-  if(!L.length)return`<section class="wrap pagehead"><p class="eyebrow">Panier</p><h1>Ton panier est vide</h1><div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Voir les créations</a></div></section>`;
+  if(!L.length)return`<section class="wrap pagehead"><p class="eyebrow">Panier</p><h1>Votre panier est vide</h1><div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Voir les créations</a></div></section>`;
   const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
   const sous=L.reduce((t,l)=>t+l.maintenant,0);const pct=Number(B.acomptePct)||40;const hasCmd=L.some(l=>!l.stock);
   const reste=L.filter(l=>!l.stock).reduce((t,l)=>t+(l.prix-l.ac)*l.qte,0);
-  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Panier</p><h1>Ta commande</h1></section>
+  return`<section class="wrap pagehead" style="padding-bottom:24px"><p class="eyebrow">Panier</p><h1>Votre commande</h1></section>
   <section class="wrap"><div class="cart">
     ${L.map(l=>{const ph=photos(l.p)[0];return`<div class="cart-row">
       <a class="cart-pic" href="#/creation/${encodeURIComponent(l.p.id)}">${ph?`<img src="${esc(media(ph))}" alt="">`:`<div class="ph" style="aspect-ratio:auto;height:100%"></div>`}</a>
@@ -319,20 +319,20 @@ function vPanier(){
       <div><span>Créations</span><b>${eur2(sous)}</b></div>
       <div><span>Livraison</span><b>${port?eur2(port):"gratuite"}</b></div>
       <div class="big"><span>À payer aujourd'hui</span><b>${eur2(sous+port)}</b></div>
-      ${hasCmd?`<p class="note-s" style="margin:0">Reste à payer avant l'expédition des créations sur commande : ${eur2(reste)}. Nous t'enverrons un lien de paiement.</p>`:""}
+      ${hasCmd?`<p class="note-s" style="margin:0">Reste à payer avant l'expédition des créations sur commande : ${eur2(reste)}. Nous vous enverrons un lien de paiement.</p>`:""}
     </div>
     <label class="consent full"><input type="checkbox" name="cgv"><span>J'ai lu et j'accepte les <a href="#/cgv" target="_blank">conditions générales de vente</a>, notamment le délai et les conditions de rétractation.</span></label>
     <div class="full"><button class="btn" type="submit">Payer ${eur2(sous+port)}</button></div>
-    <p class="note-s full" style="margin:0">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay. Les pièces disponibles sont réservées pour toi pendant le paiement.</p>
+    <p class="note-s full" style="margin:0">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay. Les pièces disponibles sont réservées pour vous pendant le paiement.</p>
     <div class="full" data-out aria-live="polite"></div>
   </form></section>`;
 }
 async function payer(f){
   const out=f.querySelector("[data-out]");const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
   const v=n=>String(f.elements[n]?f.elements[n].value:"").trim();
-  if(v("nom").length<2)return show("Indique ton nom et prénom.",1);
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v("email")))return show("Indique une adresse e-mail valide : ta confirmation y sera envoyée.",1);
-  if(!f.elements.cgv.checked)return show("Coche la case pour accepter les conditions générales de vente.",1);
+  if(v("nom").length<2)return show("Indiquez votre nom et prénom.",1);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v("email")))return show("Indiquez une adresse e-mail valide : votre confirmation y sera envoyée.",1);
+  if(!f.elements.cgv.checked)return show("Cochez la case pour accepter les conditions générales de vente.",1);
   const btn=f.querySelector("button[type=submit]");btn.disabled=true;show("Redirection vers le paiement sécurisé…");
   try{
     const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",apercu:AP||"",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},cgv:true}});
@@ -340,15 +340,15 @@ async function payer(f){
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
     if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
-    if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écris-nous depuis la fiche de la création (« Une question ? ») : nous te recontactons pour la commande.",1);
-    if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de ton panier vient d'être réservée par une autre cliente. Vérifie ton panier.",1)}
-    show("Le paiement n'a pas pu démarrer. Réessaie dans un instant ou écris-nous.",1);
-  }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessaie dans un instant.",1)}
+    if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écris-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
+    if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de votre panier vient d'être réservée par une autre cliente. Vérifiez votre panier.",1)}
+    show("Le paiement n'a pas pu démarrer. Réessayez dans un instant ou écrivez-nous.",1);
+  }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessayez dans un instant.",1)}
 }
 function vMerci(q){
   const solde=/solde=1/.test(q||"");if(!solde)cartSet([]);
-  return`<section class="wrap pagehead"><p class="eyebrow">Merci</p><h1>${solde?"Solde reçu":"Ta commande est confirmée"}</h1>
-  <div class="lead prose"><p>${solde?"Merci, ton paiement est bien reçu. Ta création part très vite : nous t'envoyons le suivi dès l'expédition.":"Merci pour ta confiance. Ton paiement est bien reçu et un e-mail de confirmation vient de partir. Nous préparons ta création et revenons vers toi très vite."}</p></div>
+  return`<section class="wrap pagehead"><p class="eyebrow">Merci</p><h1>${solde?"Solde reçu":"Votre commande est confirmée"}</h1>
+  <div class="lead prose"><p>${solde?"Merci, votre paiement est bien reçu. Votre création part très vite : nous vous envoyons le suivi dès l'expédition.":"Merci pour votre confiance. Votre paiement est bien reçu et un e-mail de confirmation vient de partir. Nous préparons votre création et revenons vers vous très vite."}</p></div>
   <div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Continuer la visite</a></div></section>`;
 }
 
@@ -357,7 +357,7 @@ async function payerAcompte(b){
   const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"devis",token:b.dataset.payerAcompte}});
   let d=data;if(error){try{d=await error.context.json()}catch(_){d={}}}
   if(d&&d.url){location.href=d.url;return}
-  b.disabled=false;if(out)out.innerHTML=`<p class="msg err">${d&&d.error==="non_configure"?"Le paiement en ligne n'est pas encore ouvert : nous te contactons pour régler l'acompte.":d&&d.error==="deja"?"Cet acompte est déjà payé.":"Le paiement n'a pas pu démarrer. Réessaie dans un instant."}</p>`;
+  b.disabled=false;if(out)out.innerHTML=`<p class="msg err">${d&&d.error==="non_configure"?"Le paiement en ligne n'est pas encore ouvert : nous vous contactons pour régler l'acompte.":d&&d.error==="deja"?"Cet acompte est déjà payé.":"Le paiement n'a pas pu démarrer. Réessayez dans un instant."}</p>`;
 }
 const ROUTES={"":vAccueil,creations:vCreations,prestations:vPrestations,rendezvous:vRdv,maison:vMaison,entretien:vEntretien,contact:vContact,legal:()=>vLegal("legal"),cgv:()=>vLegal("cgv"),panier:vPanier,confidentialite:()=>vLegal("confidentialite")};
 const TITLES={panier:"Panier",merci:"Merci",cgv:"Conditions générales de vente",creations:"Créations",prestations:"Prestations",rendezvous:"Rendez-vous",maison:"La Maison",entretien:"Entretien",contact:"Contact",legal:"Mentions légales",confidentialite:"Confidentialité"};
@@ -370,7 +370,7 @@ function render(keepScroll){
   document.body.classList.toggle("attente",ferme());
   document.body.classList.toggle("apercu",apOk&&!!(C.attente&&C.attente.ouvert===false));
   if(att){document.title="EUGCEO · Bientôt";main.innerHTML=vAttente();lastRoute="attente";footer();return}
-  if(r==="devis"){document.title="Ton devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
+  if(r==="devis"){document.title="Votre devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
   main.innerHTML=r==="creation"?vCreation(arg):r==="merci"?vMerci(q):(ROUTES[r]||vAccueil)();
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
