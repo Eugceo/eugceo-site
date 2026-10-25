@@ -22,7 +22,7 @@ let B={livraisonFR:12.99,livraisonDOM:16.99,acomptePct:40};
 try{const u=new URLSearchParams(location.search).get("apercu");if(u){store.set("eug_apercu",u);history.replaceState(null,"",location.pathname+location.hash)}}catch(_){}
 let AP=store.get("eug_apercu");let apOk=!!AP;
 const ferme=()=>!!(C.attente&&C.attente.ouvert===false)&&!apOk;
-const OUVERT_TJ=["legal","cgv","confidentialite","devis","merci"];
+const OUVERT_TJ=["legal","cgv","confidentialite","devis","merci","entretien"];
 
 async function load(){
   const [a,b,c,d]=await Promise.allSettled([sb.from("site_contenu").select("id,data"),AP?sb.rpc("catalogue_apercu",{p_code:AP}):sb.rpc("catalogue_public"),sb.rpc("reglages_boutique"),AP?sb.rpc("apercu_ok",{p_code:AP}):Promise.resolve({data:false})]);
@@ -147,7 +147,7 @@ function vAccueil(){
   ${sec.length?`<section class="sec"><div class="wrap"><div class="pillars">${sec.map((s,i)=>`<div class="pillar"><span class="n">${["I","II","III","IV","V","VI"][i]||i+1}</span><h3>${esc(s.titre)}</h3><p>${esc(s.texte)}</p></div>`).join("")}</div></div></section>`:""}
   <section class="sec"><div class="wrap">
     <div class="head"><div><p class="eyebrow">Les créations</p><h2>Préparées une à une</h2></div><a class="more" href="#/creations">Tout voir</a></div>
-    ${sel.length?`<div class="grid">${sel.map(card).join("")}</div>`:`<p class="lead">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écris-nous</a> : nous vous présentons les pièces disponibles.</p>`}
+    ${sel.length?`<div class="grid">${sel.map(card).join("")}</div>`:`<p class="lead">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écrivez-nous</a> : nous vous présentons les pièces disponibles.</p>`}
   </div></section>
   <section class="sec band nomargin"><div class="wrap split">
     <div>${visual(m,"dark")}</div>
@@ -166,7 +166,7 @@ function vCreations(){
   return`${pageHead(c,"Collection")}
   <section class="wrap">
     <div class="filters" role="group" aria-label="Filtrer">${[["toutes","Toutes"],["dispo","Disponibles"],["commande","Sur commande"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${filtre===k}">${l}</button>`).join("")}</div>
-    ${list.length?`<div class="grid">${list.map(card).join("")}</div>`:`<p class="empty">${P.length?"Aucune création dans cette catégorie pour le moment.":"Les créations arrivent très bientôt. Écris-nous pour connaître les pièces disponibles."}</p>`}
+    ${list.length?`<div class="grid">${list.map(card).join("")}</div>`:`<p class="empty">${P.length?"Aucune création dans cette catégorie pour le moment.":"Les créations arrivent très bientôt. Écrivez-nous pour connaître les pièces disponibles."}</p>`}
   </section>
   ${(c.sections||[]).length?`<section class="sec"><div class="wrap">${blocks(c.sections)}</div></section>`:""}`;
 }
@@ -197,7 +197,7 @@ function vCreation(id){
   </section>
   <section class="sec" id="reserver"><div class="formcard">
     <h3>${pr!=null?"Une question sur cette création ?":dispo(p)?"Réserver cette création":"Commander cette création"}</h3>
-    <p>${pr!=null?"Écris-nous : taille de bonnet, rendu, délai… Nous vous répondons sous 48 heures ouvrées.":"Laissez-nous vos coordonnées : nous vous recontactons sous 48 heures ouvrées pour confirmer, répondre à vos questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape."}</p>
+    <p>${pr!=null?"Écrivez-nous : taille de bonnet, rendu, délai… Nous vous répondons sous 48 heures ouvrées.":"Laissez-nous vos coordonnées : nous vous recontactons sous 48 heures ouvrées pour confirmer, répondre à vos questions et organiser le paiement et l'envoi. Rien n'est débité à cette étape."}</p>
     ${form("commande",{id:p.id,titre:t})}
   </div></section></div>`;
 }
@@ -229,7 +229,7 @@ function vEntretien(){
 function vContact(){
   const c=C.contact||{};const tel=(c.telephone||"").replace(/\s/g,"");
   return`<section class="wrap pagehead split" style="align-items:start">
-    <div><p class="eyebrow">Écris-nous</p><h1>${esc(c.titre||"Contact")}</h1><div class="lead prose">${paras(c.texte)}</div>
+    <div><p class="eyebrow">Écrivez-nous</p><h1>${esc(c.titre||"Contact")}</h1><div class="lead prose">${paras(c.texte)}</div>
       <div class="contact-lines">${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:""}${c.telephone?`<a href="tel:${esc(tel.replace(/^0/,"+33"))}">${esc(c.telephone)}</a>`:""}</div></div>
     <div class="formcard">${form("contact")}</div>
   </section>`;
@@ -243,7 +243,7 @@ const eur2=v=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).f
 async function loadDevis(token){
   main.innerHTML=`<section class="wrap pagehead"><p class="eyebrow">Devis</p><h1>Chargement…</h1></section>`;
   const{data,error}=await sb.rpc("devis_public",{p_token:token});
-  if(error||!data){main.innerHTML=`<section class="wrap pagehead"><p class="eyebrow">Devis</p><h1>Ce devis est introuvable</h1><p class="lead">Le lien est peut-être incomplet. Écris-nous à <a href="mailto:contact@eugceo.fr">contact@eugceo.fr</a>.</p></section>`;return}
+  if(error||!data){main.innerHTML=`<section class="wrap pagehead"><p class="eyebrow">Devis</p><h1>Ce devis est introuvable</h1><p class="lead">Le lien est peut-être incomplet. Écrivez-nous à <a href="mailto:contact@eugceo.fr">contact@eugceo.fr</a>.</p></section>`;return}
   main.innerHTML=vDevis(data,token);
 }
 function vDevis(d,token){
@@ -253,7 +253,7 @@ function vDevis(d,token){
   let action="";
   if(d.statut==="Accepté")action=`<p class="msg">Devis accepté le ${dfr(d.accepteLe)}${d.acceptePar?" par "+esc(String(d.acceptePar).replace(/\.$/,"")):""}. Merci !${d.acomptePaye?` Acompte de ${eur2(d.acomptePaye.montant)} reçu le ${dfr(d.acomptePaye.le)} : votre création est lancée.`:n(d.acompte)?"":" Nous revenons vers vous très vite pour la suite."}</p>${!d.acomptePaye&&n(d.acompte)?`<div class="actions" style="margin-top:20px"><button type="button" class="btn" data-payer-acompte="${esc(token)}">Payer l'acompte · ${eur2(d.acompte)}</button></div><p class="note-s">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay.</p><div data-out-ac aria-live="polite"></div>`:""}`;
   else if(d.statut==="Refusé"||d.statut==="Annulé")action=`<p class="msg">Ce devis n'est plus valable. Écrivez-nous si vous souhaitez un nouveau devis.</p>`;
-  else if(expire)action=`<p class="msg">Ce devis a expiré le ${dfr(d.validite)}. Écris-nous pour en recevoir un nouveau.</p>`;
+  else if(expire)action=`<p class="msg">Ce devis a expiré le ${dfr(d.validite)}. Écrivez-nous pour en recevoir un nouveau.</p>`;
   else action=`<form class="form" id="dvAccept" data-token="${esc(token)}" novalidate style="max-width:560px">
     <div class="fld full"><label for="f_dvnom">Votre nom et prénom</label><input id="f_dvnom" name="nom" maxlength="120" autocomplete="name" value="${esc(d.client||"")}"></div>
     <label class="consent full"><input type="checkbox" name="ok"><span>J'ai lu ce devis et je l'accepte (bon pour accord)${n(d.acompte)?`, avec un acompte de ${eur2(d.acompte)} à verser`:""}. J'ai pris connaissance des <a href="#/cgv" target="_blank">conditions générales de vente</a>.</span></label>
@@ -269,7 +269,7 @@ function vDevis(d,token){
     <div class="dv-foot">${d.delai?`<p>Délai : ${esc(d.delai)}</p>`:""}${d.conditions?`<p>${esc(d.conditions)}</p>`:""}${s.tva==="Oui"?"":"<p>TVA non applicable, article 293 B du CGI.</p>"}</div>
   </div>
   <div style="margin-top:32px">${action}</div>
-  ${d.statut==="Envoyé"?`<p class="note-s">Une question avant d'accepter ? <a href="#/contact">Écris-nous</a>.</p>`:""}</section>`;
+  ${d.statut==="Envoyé"?`<p class="note-s">Une question avant d'accepter ? <a href="#/contact">Écrivez-nous</a>.</p>`:""}</section>`;
 }
 async function accepterDevis(f){
   const out=f.querySelector("[data-out]");const nom=f.elements.nom.value.trim();const show=(t,e)=>{out.innerHTML=`<p class="msg${e?" err":""}">${esc(t)}</p>`};
@@ -279,7 +279,7 @@ async function accepterDevis(f){
   const{data,error}=await sb.rpc("accepter_devis",{p_token:f.dataset.token,p_nom:nom});btn.disabled=false;
   if(error)return show("L'envoi n'a pas fonctionné. Réessayez dans un instant.",1);
   if(data==="ok"||data==="deja")return loadDevis(f.dataset.token);
-  show(data==="expire"?"Ce devis a expiré. Écris-nous pour en recevoir un nouveau.":"Ce devis ne peut plus être accepté. Écris-nous.",1);
+  show(data==="expire"?"Ce devis a expiré. Écrivez-nous pour en recevoir un nouveau.":"Ce devis ne peut plus être accepté. Écrivez-nous.",1);
 }
 
 /* ---------- panier ---------- */
@@ -340,7 +340,7 @@ async function payer(f){
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
     if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
-    if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écris-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
+    if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écrivez-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
     if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de votre panier vient d'être réservée par une autre cliente. Vérifiez votre panier.",1)}
     show("Le paiement n'a pas pu démarrer. Réessayez dans un instant ou écrivez-nous.",1);
   }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessayez dans un instant.",1)}
