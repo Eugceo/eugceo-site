@@ -10,7 +10,7 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const paras=t=>String(t||"").split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean).map(x=>`<p>${esc(x).replace(/\n/g,"<br>")}</p>`).join("");
 const media=p=>p?`${SUPA}/storage/v1/object/public/site/${p.split("/").map(encodeURIComponent).join("/")}`:"";
 const isVid=p=>/^videos\//.test(p||"");
-const MONO='<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4.5C74 3.8 96.2 24 95.4 50.6 94.7 75 74.6 96 49.2 95.3 24.8 94.8 4.6 74.2 5.2 49.4 5.9 25.6 26.4 5.1 50 4.5Z" fill="none" stroke="currentColor" stroke-width="1.6"/><text x="50" y="62" text-anchor="middle" font-family="Cormorant,Georgia,serif" font-size="34" fill="currentColor">EC</text></svg>';
+const MONO='<svg class="ecm" aria-hidden="true"><use href="#ec"/></svg>';
 const TRESSE='<svg viewBox="0 0 2400 56" preserveAspectRatio="xMinYMid slice" aria-hidden="true"><g fill="none" stroke="#c8c1ba" stroke-width="1.4" opacity=".8"><path d="M0 28 C40 4 80 4 120 28 S200 52 240 28 S320 4 360 28 S440 52 480 28 S560 4 600 28 S680 52 720 28 S800 4 840 28 S920 52 960 28 S1040 4 1080 28 S1160 52 1200 28 S1280 4 1320 28 S1400 52 1440 28 S1520 4 1560 28 S1640 52 1680 28 S1760 4 1800 28 S1880 52 1920 28 S2000 4 2040 28 S2120 52 2160 28 S2240 4 2280 28 S2360 52 2400 28 S2480 4 2520 28"/><path d="M0 28 C40 52 80 52 120 28 S200 4 240 28 S320 52 360 28 S440 4 480 28 S560 52 600 28 S680 4 720 28 S800 52 840 28 S920 4 960 28 S1040 52 1080 28 S1160 4 1200 28 S1280 52 1320 28 S1400 4 1440 28 S1520 52 1560 28 S1640 4 1680 28 S1760 52 1800 28 S1880 4 1920 28 S2000 52 2040 28 S2120 4 2160 28 S2240 52 2280 28 S2360 4 2400 28 S2480 52 2520 28"/></g></svg>';
 const eur=v=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:Number(v)%1?2:0}).format(Number(v));
 
@@ -134,30 +134,34 @@ function visual(c,cls){
 }
 function blocks(list){return list&&list.length?`<div class="blocks">${list.map(s=>`<div class="block">${s.titre?`<h3>${esc(s.titre)}</h3>`:""}<p>${esc(s.texte)}</p></div>`).join("")}</div>`:""}
 
+function devise(t){t=String(t||"");const k=t.indexOf("CEO");if(k<0)return`<h1 class="devise"><span class="l2 l2s">${esc(t)}</span></h1>`;
+  return`<h1 class="devise">${t.slice(0,k).trim()?`<span class="l1">${esc(t.slice(0,k).trim())}</span>`:""}<span class="l2">CEO</span>${t.slice(k+3).trim()?`<span class="l3">${esc(t.slice(k+3).trim())}</span>`:""}</h1>`}
 function vAccueil(){
   const c=C.accueil||{};const sec=c.sections||[];
-  const sel=P.filter(p=>photos(p).length).concat(P.filter(p=>!photos(p).length)).slice(0,3);
-  const pr=C.prestations||{};const m=C.maison||{};
-  const heroMedia=c.video?`<video src="${esc(media(c.video))}" autoplay muted loop playsinline${c.image?` poster="${esc(media(c.image))}"`:""}></video>`:c.image?`<img src="${esc(media(c.image))}" alt="">`:`<div class="wm">${MONO}</div>`;
-  return`<section class="hero"><div class="hero-txt fade">
-    ${c.surTitre?`<p class="eyebrow">${esc(c.surTitre)}</p>`:""}<h1>${esc(c.titre||"")}</h1>${c.texte?`<p>${esc(c.texte)}</p>`:""}
-    <div class="actions"><a class="btn light" href="#/creations">${esc(c.boutons||"Voir les créations")}</a><a class="btn line" href="#/rendezvous">Prendre rendez-vous</a></div>
-  </div><div class="hero-pic">${heroMedia}</div></section>
-  <div class="tresse" aria-hidden="true">${TRESSE}</div>
-  ${sec.length?`<section class="sec"><div class="wrap"><div class="pillars">${sec.map((s,i)=>`<div class="pillar"><span class="n">${["I","II","III","IV","V","VI"][i]||i+1}</span><h3>${esc(s.titre)}</h3><p>${esc(s.texte)}</p></div>`).join("")}</div></div></section>`:""}
-  <section class="sec"><div class="wrap">
-    <div class="head"><div><p class="eyebrow">Les créations</p><h2>Préparées une à une</h2></div><a class="more" href="#/creations">Tout voir</a></div>
-    ${sel.length?`<div class="grid">${sel.map(card).join("")}</div>`:`<p class="lead">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écrivez-nous</a> : nous vous présentons les pièces disponibles.</p>`}
-  </div></section>
-  <section class="sec band nomargin"><div class="wrap split">
-    <div>${visual(m,"dark")}</div>
-    <div style="display:flex;flex-direction:column;gap:22px"><p class="eyebrow">${esc(m.titre||"La Maison")}</p><h2>Une maison, une main</h2><div class="lead prose">${paras(m.texte)}</div><div><a class="btn line" href="#/maison">Découvrir la Maison</a></div></div>
-  </div></section>
-  <section class="sec" style="padding-top:clamp(56px,9vw,120px)"><div class="wrap">
-    <div class="head"><div><p class="eyebrow">${esc(pr.titre||"Prestations")}</p><h2>Pose, entretien, transformation</h2></div><a class="more" href="#/prestations">Les prestations</a></div>
-    <div class="offer">${(pr.sections||[]).slice(0,3).map(s=>`<div><h3>${esc(s.titre)}</h3><p>${esc(s.texte)}</p></div>`).join("")}</div>
-    <div class="actions" style="margin-top:36px"><a class="btn" href="#/rendezvous">Prendre rendez-vous</a></div>
-  </div></section>`;
+  const sel=P.filter(p=>photos(p).length).concat(P.filter(p=>!photos(p).length)).slice(0,8);
+  const pr=C.prestations||{};const cr=C.creations||{};
+  const heroMedia=c.video?`<video src="${esc(media(c.video))}" autoplay muted loop playsinline${c.image?` poster="${esc(media(c.image))}"`:""}></video>`:c.image?`<img src="${esc(media(c.image))}" alt="">`:`<div class="une-vide">${MONO}</div>`;
+  const tuile=(o,lien,titreT,lienT)=>`<div class="bloc rv"><a class="cadre" href="${lien}" aria-label="${esc(titreT)}">${o.video?`<video src="${esc(media(o.video))}" autoplay muted loop playsinline></video>`:o.image?`<img src="${esc(media(o.image))}" alt="" loading="lazy">`:`<div class="vide">${MONO}</div>`}</a><h3>${esc(titreT)}</h3><a class="lien" href="${lien}">${esc(lienT)}</a></div>`;
+  return`<section class="une${c.image||c.video?" avec":""}">${heroMedia}<div class="une-txt">
+    ${c.surTitre?`<p class="sur">${esc(c.surTitre)}</p>`:""}${devise(c.titre||"")}
+    <a class="lien" href="#/creations">${esc(c.boutons||"Découvrir les créations")}</a>
+  </div><div class="defile" aria-hidden="true"></div></section>
+  <section class="wrap phrase">
+    <h2 class="rv">Ce n'est pas qu'une création.<br><em>C'est une EUGCEO.</em></h2>
+    <div class="trait rv"></div>
+    ${c.texte?`<p class="rv">${esc(c.texte)}</p>`:""}
+    <a class="lien rv" href="#/maison">La Maison</a>
+  </section>
+  <section class="diptyque">
+    ${tuile(cr,"#/creations","Les créations","Découvrir")}
+    ${tuile(pr,"#/prestations","Pose et remise en forme","Les prestations")}
+  </section>
+  <section class="rang">
+    <div class="wrap tete rv"><div><p class="sur">Les créations</p><h2>Préparées une à une</h2></div><a class="lien" href="#/creations">Tout voir</a></div>
+    ${sel.length?`<div class="piste rv" id="piste">${sel.map(card).join("")}</div>`:`<div class="wrap"><p class="lead rv">Les créations arrivent très bientôt. En attendant, <a href="#/contact">écrivez-nous</a> : nous vous présentons les pièces disponibles.</p></div>`}
+  </section>
+  ${sec.length?`<section class="wrap trois">${sec.map(x=>`<div class="rv"><h3>${esc(x.titre)}</h3><p>${esc(x.texte)}</p></div>`).join("")}</section>`:""}
+  <section class="appel"><div class="wrap"><p class="sur rv">Pose, essayage, remise en forme</p><h2 class="rv">Prendre rendez-vous</h2><a class="btn rv" href="#/rendezvous">Envoyer une demande</a></div></section>`;
 }
 let filtre="toutes";
 function vCreations(){
@@ -369,9 +373,10 @@ function render(keepScroll){
   const att=ferme()&&!OUVERT_TJ.includes(r);
   document.body.classList.toggle("attente",ferme());
   document.body.classList.toggle("apercu",apOk&&!!(C.attente&&C.attente.ouvert===false));
-  if(att){document.title="EUGCEO · Bientôt";main.innerHTML=vAttente();lastRoute="attente";footer();return}
+  if(att){document.title="EUGCEO · Bientôt";main.innerHTML=vAttente();document.body.dataset.r="attente";lastRoute="attente";footer();return}
   if(r==="devis"){document.title="Votre devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
   main.innerHTML=r==="creation"?vCreation(arg):r==="merci"?vMerci(q):(ROUTES[r]||vAccueil)();
+  document.body.dataset.r=(r==="creation"||ROUTES[r]||r==="merci")?(r||"accueil"):"accueil";armer();
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
   const route=r+"/"+(arg||"");
@@ -385,12 +390,31 @@ function footer(){const c=C.contact||{};const tel=(c.telephone||"").replace(/\s/
 
 /* ---------- événements ---------- */
 const nav=$("#nav"),burger=$("#burger");
-function menu(open){nav.classList.toggle("open",open);burger.setAttribute("aria-expanded",String(open));burger.setAttribute("aria-label",open?"Fermer le menu":"Ouvrir le menu");document.body.style.overflow=open?"hidden":""}
+function menu(open){nav.classList.toggle("open",open);document.body.classList.toggle("menu-ouvert",open);const tx=burger.querySelector(".txt");if(tx)tx.textContent=open?"Fermer":"Menu";burger.setAttribute("aria-expanded",String(open));burger.setAttribute("aria-label",open?"Fermer le menu":"Ouvrir le menu");document.body.style.overflow=open?"hidden":""}
 burger.addEventListener("click",()=>menu(!nav.classList.contains("open")));
 nav.addEventListener("click",e=>{if(e.target.closest("a"))menu(false)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&nav.classList.contains("open")){menu(false);burger.focus()}});
-window.addEventListener("hashchange",()=>render());
-window.addEventListener("scroll",()=>$("#hd").classList.toggle("scrolled",scrollY>8),{passive:true});
+const voile=$("#voile");let enCours=null;
+const calme=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+window.addEventListener("hashchange",()=>{
+  const r=location.hash.replace(/^#\/?/,"").split(/[/?]/)[0];
+  if(r==="reserver"||calme()||!voile){render();return}
+  clearTimeout(enCours);voile.className="voile monte";
+  enCours=setTimeout(()=>{render();voile.className="voile part";enCours=setTimeout(()=>{voile.className="voile"},720)},520);
+});
+/* apparitions au défilement */
+const obs="IntersectionObserver" in window?new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("vu");obs.unobserve(en.target)}}),{rootMargin:"0px 0px -8% 0px"}):null;
+function armer(){document.documentElement.classList.add("js");main.querySelectorAll(".rv").forEach(el=>{if(!obs||el.getBoundingClientRect().top<innerHeight*.95)el.classList.add("vu");else obs.observe(el)})}
+/* rangée de créations : glisser à la souris */
+let tire=null;
+document.addEventListener("pointerdown",e=>{const p=e.target.closest(".piste");if(!p||e.pointerType!=="mouse")return;tire={p,x:e.clientX,s:p.scrollLeft,m:false};p.classList.add("tire")});
+addEventListener("pointermove",e=>{if(!tire)return;const d=e.clientX-tire.x;if(Math.abs(d)>4)tire.m=true;tire.p.scrollLeft=tire.s-d});
+addEventListener("pointerup",()=>{if(!tire)return;tire.p.classList.remove("tire");const m=tire.m;setTimeout(()=>{tire=null},0)});
+document.addEventListener("click",e=>{if(tire&&tire.m&&e.target.closest(".piste")){e.preventDefault();e.stopPropagation()}},true);
+/* ouverture */
+(function(){const it=$("#intro");if(!it)return;let vu=false;try{vu=sessionStorage.getItem("eug_intro")==="1";sessionStorage.setItem("eug_intro","1")}catch(_){}
+  if(vu||calme()){it.remove();return}setTimeout(()=>it.classList.add("fini"),1400);setTimeout(()=>it.remove(),2300)})();
+window.addEventListener("scroll",()=>$("#hd").classList.toggle("scrolled",scrollY>40),{passive:true});
 document.addEventListener("click",e=>{
   const ad=e.target.closest("[data-add]");if(ad){cartAdd(ad.dataset.add);return}
   const cq=e.target.closest("[data-cq]");if(cq){const c=cartGet();const it=c.find(x=>x.id===cq.dataset.id);const p=P.find(x=>x.id===cq.dataset.id);if(it&&p){it.qte=Math.max(1,Math.min(Number(p.disponible)||1,it.qte+Number(cq.dataset.cq)))}cartSet(c);render(true);return}
