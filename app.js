@@ -347,7 +347,7 @@ async function payer(f){
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
     if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
-    const CE={code_inconnu:"Ce code de parrainage n'existe pas. Vérifiez-le ou laissez la case vide.",code_perso:"C'est votre propre code : il est fait pour vos proches. Vous pouvez en revanche utiliser votre cagnotte (case à cocher).",code_min:"Le code de parrainage s'applique à partir de "+eur2(d&&d.min||150)+" d'achat.",cagnotte_autre:"La cagnotte ne peut être utilisée que par la titulaire du code (même adresse e-mail).",cagnotte_vide:"Votre cagnotte est vide pour l'instant.",offert:"Votre cagnotte couvre toute la commande : écrivez-nous, nous préparons votre création offerte avec vous."};
+    const CE={code_inconnu:"Ce code de parrainage n'existe pas. Vérifiez-le ou laissez la case vide.",code_perso:"C'est votre propre code : il est fait pour vos proches. Vous pouvez en revanche utiliser votre cagnotte (case à cocher).",code_min:"Le code de parrainage s'applique à partir de "+eur2(d&&d.min||150)+" d'achat.",cagnotte_autre:"La cagnotte ne peut être utilisée que par la titulaire du code (même e-mail ou même téléphone).",cagnotte_vide:"Votre cagnotte est vide pour l'instant.",offert:"Votre cagnotte couvre toute la commande : écrivez-nous, nous préparons votre création offerte avec vous."};
     if(d&&CE[d.error])return show(CE[d.error],1);
     if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écrivez-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
     if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de votre panier vient d'être réservée par une autre cliente. Vérifiez votre panier.",1)}
@@ -372,7 +372,7 @@ async function verifCode(f){
   const out=f.querySelector("[data-code-out]");const code=String(f.elements.code.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
   const keepCag=f.elements.cagnotte&&f.elements.cagnotte.checked;
   if(!code){codeEtat=null;out.innerHTML="";totauxPanier(f);return}
-  let e=null;try{const{data}=await sb.rpc("code_verifier",{p_code:code,p_email:f.elements.email.value.trim(),p_nom:f.elements.nom.value.trim()});e=data}catch(_){}
+  let e=null;try{const{data}=await sb.rpc("code_verifier",{p_code:code,p_email:f.elements.email.value.trim(),p_nom:f.elements.nom.value.trim(),p_tel:f.elements.telephone.value.trim()});e=data}catch(_){}
   if(String(f.elements.code.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"")!==code)return;
   codeEtat=e;const brut=cartGet().map(lignePanier).filter(Boolean).reduce((t,l)=>t+l.prix*l.qte,0);
   if(!e)out.innerHTML="";
@@ -392,7 +392,7 @@ function vMerci(q){
 async function monCode(sid,k){
   let d=null;try{const r=await sb.rpc("code_de_session",{p_session:sid});d=r.data}catch(_){}
   const box=document.querySelector("[data-moncode]");if(!box)return;
-  if(d&&d.code){box.innerHTML=`<p class="eyebrow">Votre code de parrainage</p><p style="font-size:28px;letter-spacing:.12em;margin:6px 0 10px"><b>${esc(d.code)}</b></p><p>Offrez-le à vos proches : elles ont −10 % sur leur commande à partir de 150 €, et vous gagnez 10 % de cagnotte pour chacune, jusqu'à une création offerte. Pour utiliser votre cagnotte, entrez votre code dans le panier avec la même adresse e-mail. Vous le retrouvez aussi dans votre e-mail de confirmation.</p>`;return}
+  if(d&&d.code){box.innerHTML=`<p class="eyebrow">Votre code de parrainage</p><p style="font-size:28px;letter-spacing:.12em;margin:6px 0 10px"><b>${esc(d.code)}</b></p><p>Offrez-le à vos proches : elles ont −10 % sur leur commande à partir de 150 €, et vous gagnez 10 % de cagnotte pour chacune, jusqu'à une création offerte. Pour utiliser votre cagnotte, entrez votre code dans le panier avec la même adresse e-mail ou le même téléphone. Vous le retrouvez aussi dans votre e-mail de confirmation.</p>`;return}
   if(k<6)setTimeout(()=>monCode(sid,k+1),2500);
 }
 
@@ -474,7 +474,7 @@ document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]
   const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
 document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone","code"].forEach(k=>keep[k]=f.elements[k].value);const cg=!!(f.elements.cagnotte&&f.elements.cagnotte.checked);render(true);const g=document.getElementById("cartForm");if(g){["nom","email","telephone","code"].forEach(k=>g.elements[k].value=keep[k]);if(keep.code)verifCode(g).then(()=>{if(cg&&g.elements.cagnotte){g.elements.cagnotte.checked=true;totauxPanier(g)}})}}
   if(e.target.name==="cagnotte"&&e.target.closest("#cartForm"))totauxPanier(e.target.closest("#cartForm"))});
-document.addEventListener("input",e=>{const f=e.target.closest("#cartForm");if(f&&["code","email","nom"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
+document.addEventListener("input",e=>{const f=e.target.closest("#cartForm");if(f&&["code","email","nom","telephone"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
 
 cartBadge();
 if(store.get("eug_contenu"))render();
