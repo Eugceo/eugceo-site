@@ -319,7 +319,7 @@ function vPanier(){
       <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Rennes · gratuit</option></select></div>
     ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
     ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
-    <div class="fld"><label for="f_code">Code de parrainage <span class="muted">(facultatif)</span></label><input id="f_code" name="code" autocomplete="off" autocapitalize="characters" maxlength="20" style="text-transform:uppercase"></div>
+    <div class="fld"><label for="f_code">Code d'ambassadrice <span class="muted">(facultatif)</span></label><input id="f_code" name="code" autocomplete="off" autocapitalize="characters" maxlength="20" style="text-transform:uppercase"></div>
     <div class="full" data-code-out aria-live="polite"></div>
     <div class="cart-total full">
       <div><span>Créations</span><b>${eur2(sous)}</b></div>
@@ -347,7 +347,7 @@ async function payer(f){
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
     if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
-    const CE={code_inconnu:"Ce code de parrainage n'existe pas. Vérifiez-le ou laissez la case vide.",code_perso:"C'est votre propre code : il est fait pour vos proches. Vous pouvez en revanche utiliser votre cagnotte (case à cocher).",code_min:"Le code de parrainage s'applique à partir de "+eur2(d&&d.min||150)+" d'achat.",cagnotte_autre:"La cagnotte ne peut être utilisée que par la titulaire du code (même e-mail ou même téléphone).",cagnotte_vide:"Votre cagnotte est vide pour l'instant.",offert:"Votre cagnotte couvre toute la commande : écrivez-nous, nous préparons votre création offerte avec vous."};
+    const CE={code_inconnu:"Ce code n'existe pas. Vérifiez-le ou laissez la case vide.",code_perso:"C'est votre propre code : il est fait pour les personnes que vous recommandez. Vous pouvez en revanche utiliser votre cagnotte (case à cocher).",code_deja:"Un code d'ambassadrice ne s'utilise qu'une fois par cliente, et vous en avez déjà profité.",cagnotte_plancher:"Votre cagnotte ne peut pas s'appliquer à cette commande. Écrivez-nous, nous trouverons une solution.",code_min:"Ce code s'applique à partir de "+eur2(d&&d.min||150)+" d'achat.",cagnotte_autre:"La cagnotte ne peut être utilisée que par la titulaire du code (même e-mail ou même téléphone).",cagnotte_vide:"Votre cagnotte est vide pour l'instant.",offert:"Votre cagnotte couvre toute la commande : écrivez-nous, nous préparons votre création offerte avec vous."};
     if(d&&CE[d.error])return show(CE[d.error],1);
     if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écrivez-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
     if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de votre panier vient d'être réservée par une autre cliente. Vérifiez votre panier.",1)}
@@ -360,8 +360,8 @@ function totauxPanier(f){
   const L=cartGet().map(lignePanier).filter(Boolean);const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
   const pct=Number(B.acomptePct)||40;const brut=L.reduce((t,l)=>t+l.prix*l.qte,0);const r=x=>Math.round(x*100)/100;
   let rate=0,lib="";const e=codeEtat;const cag=f.elements.cagnotte&&f.elements.cagnotte.checked;
-  if(e&&e.valide&&!e.proprio&&brut>=Number(e.min)){rate=Number(e.remise)/100;lib="Parrainage −"+e.remise+" %"}
-  if(e&&e.valide&&e.proprio&&cag&&Number(e.pct)>0){rate=Math.min(brut*e.pct/100,Number(e.plafond)||250)/brut;lib="Cagnotte "+e.pct+" %"}
+  if(e&&e.valide&&!e.proprio&&!e.deja&&brut>=Number(e.min)){rate=Number(e.remise)/100;lib="Code "+e.code+" −"+e.remise+" %"}
+  if(e&&e.valide&&e.proprio&&cag&&Number(e.solde)>0){rate=Math.min(Number(e.solde),brut)/brut;lib="Votre cagnotte"}
   const plein=L.reduce((t,l)=>t+l.maintenant,0);
   const net=L.reduce((t,l)=>{const pu=r(l.prix*(1-rate));return t+(l.stock?pu:r(pu*pct/100))*l.qte},0);
   const rr=f.querySelector("[data-remise]");rr.hidden=!rate;f.querySelector("[data-remise-l]").textContent=lib;f.querySelector("[data-remise-v]").textContent="− "+eur2(plein-net);
@@ -377,25 +377,17 @@ async function verifCode(f){
   codeEtat=e;const brut=cartGet().map(lignePanier).filter(Boolean).reduce((t,l)=>t+l.prix*l.qte,0);
   if(!e)out.innerHTML="";
   else if(!e.valide)out.innerHTML=`<p class="msg err">Ce code n'existe pas.</p>`;
-  else if(e.proprio)out.innerHTML=Number(e.pct)>0?`<label class="consent"><input type="checkbox" name="cagnotte"${keepCag?" checked":""}><span>C'est votre code. Utiliser votre cagnotte de <b>${e.pct} %</b> sur cette commande${Number(e.pct)>=100?" (création offerte, jusqu'à "+eur2(e.plafond)+")":" (jusqu'à "+eur2(e.plafond)+")"}. Elle repartira ensuite à zéro.</span></label>`:`<p class="msg">C'est votre code : offrez-le à vos proches. Votre cagnotte est vide pour l'instant ; elle augmente de 10 % à chaque commande passée avec votre code.</p>`;
+  else if(e.proprio)out.innerHTML=Number(e.solde)>0?`<label class="consent"><input type="checkbox" name="cagnotte"${keepCag?" checked":""}><span>C'est votre code. Utiliser votre cagnotte de <b>${eur2(e.solde)}</b> sur cette commande. Le montant exact est calculé au paiement ; ce qui n'est pas utilisé est gardé pour la prochaine fois.</span></label>`:`<p class="msg">C'est votre code : il est fait pour les personnes que vous recommandez. Votre cagnotte est vide pour l'instant.</p>`;
+  else if(e.deja)out.innerHTML=`<p class="msg err">Un code d'ambassadrice ne s'utilise qu'une fois par cliente, et vous en avez déjà profité.</p>`;
   else out.innerHTML=brut>=Number(e.min)?`<p class="msg">Code accepté : −${e.remise} % sur vos créations.</p>`:`<p class="msg err">Ce code s'applique à partir de ${eur2(e.min)} d'achat.</p>`;
   totauxPanier(f);
 }
 function vMerci(q){
   const solde=/solde=1/.test(q||"");if(!solde)cartSet([]);
-  const sid=(String(q||"").match(/(?:^|&|\?)s=([^&]+)/)||[])[1];if(sid&&!solde)setTimeout(()=>monCode(decodeURIComponent(sid),0),800);
   return`<section class="wrap pagehead"><p class="eyebrow">Merci</p><h1>${solde?"Solde reçu":"Votre commande est confirmée"}</h1>
   <div class="lead prose"><p>${solde?"Merci, votre paiement est bien reçu. Votre création part très vite : nous vous envoyons le suivi dès l'expédition.":"Merci pour votre confiance. Votre paiement est bien reçu et un e-mail de confirmation vient de partir. Nous préparons votre création et revenons vers vous très vite."}</p></div>
-  <div class="prose" data-moncode style="margin-top:28px"></div>
   <div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Continuer la visite</a></div></section>`;
 }
-async function monCode(sid,k){
-  let d=null;try{const r=await sb.rpc("code_de_session",{p_session:sid});d=r.data}catch(_){}
-  const box=document.querySelector("[data-moncode]");if(!box)return;
-  if(d&&d.code){box.innerHTML=`<p class="eyebrow">Votre code de parrainage</p><p style="font-size:28px;letter-spacing:.12em;margin:6px 0 10px"><b>${esc(d.code)}</b></p><p>Offrez-le à vos proches : elles ont −10 % sur leur commande à partir de 150 €, et vous gagnez 10 % de cagnotte pour chacune, jusqu'à une création offerte. Pour utiliser votre cagnotte, entrez votre code dans le panier avec la même adresse e-mail ou le même téléphone. Vous le retrouvez aussi dans votre e-mail de confirmation.</p>`;return}
-  if(k<6)setTimeout(()=>monCode(sid,k+1),2500);
-}
-
 async function payerAcompte(b){
   b.disabled=true;const out=document.querySelector("[data-out-ac]");
   const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"devis",token:b.dataset.payerAcompte}});
