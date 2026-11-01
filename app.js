@@ -319,14 +319,17 @@ function vPanier(){
       <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Rennes · gratuit</option></select></div>
     ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
     ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
+    <div class="fld"><label for="f_code">Code de parrainage <span class="muted">(facultatif)</span></label><input id="f_code" name="code" autocomplete="off" autocapitalize="characters" maxlength="20" style="text-transform:uppercase"></div>
+    <div class="full" data-code-out aria-live="polite"></div>
     <div class="cart-total full">
       <div><span>Créations</span><b>${eur2(sous)}</b></div>
+      <div data-remise hidden><span data-remise-l>Parrainage</span><b data-remise-v></b></div>
       <div><span>Livraison</span><b>${port?eur2(port):"gratuite"}</b></div>
-      <div class="big"><span>À payer aujourd'hui</span><b>${eur2(sous+port)}</b></div>
-      ${hasCmd?`<p class="note-s" style="margin:0">Reste à payer avant l'expédition des créations sur commande : ${eur2(reste)}. Nous vous enverrons un lien de paiement.</p>`:""}
+      <div class="big"><span>À payer aujourd'hui</span><b data-apayer>${eur2(sous+port)}</b></div>
+      ${hasCmd?`<p class="note-s" style="margin:0">Reste à payer avant l'expédition des créations sur commande : <span data-reste>${eur2(reste)}</span>. Nous vous enverrons un lien de paiement.</p>`:""}
     </div>
     <label class="consent full"><input type="checkbox" name="cgv"><span>J'ai lu et j'accepte les <a href="#/cgv" target="_blank">conditions générales de vente</a>, notamment le délai et les conditions de rétractation.</span></label>
-    <div class="full"><button class="btn" type="submit">Payer ${eur2(sous+port)}</button></div>
+    <div class="full"><button class="btn" type="submit" data-payer>Payer ${eur2(sous+port)}</button></div>
     <p class="note-s full" style="margin:0">Paiement sécurisé par carte bancaire, Apple Pay ou Google Pay. Les pièces disponibles sont réservées pour vous pendant le paiement.</p>
     <div class="full" data-out aria-live="polite"></div>
   </form></section>`;
@@ -339,21 +342,58 @@ async function payer(f){
   if(!f.elements.cgv.checked)return show("Cochez la case pour accepter les conditions générales de vente.",1);
   const btn=f.querySelector("button[type=submit]");btn.disabled=true;show("Redirection vers le paiement sécurisé…");
   try{
-    const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",apercu:AP||"",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},cgv:true}});
+    const{data,error}=await sb.functions.invoke("paiement-creer",{body:{type:"commande",apercu:AP||"",items:cartGet(),livraison:v("livraison"),client:{nom:v("nom"),email:v("email"),telephone:v("telephone")},code:v("code").toUpperCase(),cagnotte:!!(f.elements.cagnotte&&f.elements.cagnotte.checked),cgv:true}});
     let d=data;if(error){try{d=await error.context.json()}catch(_){d={}}}
     if(d&&d.url){store.set("eug_client",{nom:v("nom"),email:v("email"),telephone:v("telephone")});location.href=d.url;return}
     btn.disabled=false;
     if(d&&d.error==="ferme")return show("La boutique en ligne n'est pas encore ouverte.",1);
+    const CE={code_inconnu:"Ce code de parrainage n'existe pas. Vérifiez-le ou laissez la case vide.",code_perso:"C'est votre propre code : il est fait pour vos proches. Vous pouvez en revanche utiliser votre cagnotte (case à cocher).",code_min:"Le code de parrainage s'applique à partir de "+eur2(d&&d.min||150)+" d'achat.",cagnotte_autre:"La cagnotte ne peut être utilisée que par la titulaire du code (même adresse e-mail).",cagnotte_vide:"Votre cagnotte est vide pour l'instant.",offert:"Votre cagnotte couvre toute la commande : écrivez-nous, nous préparons votre création offerte avec vous."};
+    if(d&&CE[d.error])return show(CE[d.error],1);
     if(d&&d.error==="non_configure")return show("Le paiement en ligne n'est pas encore ouvert. Écrivez-nous depuis la fiche de la création (« Une question ? ») : nous vous recontactons pour la commande.",1);
     if(d&&d.error==="indisponible"){await load();render(true);return show("Une création de votre panier vient d'être réservée par une autre cliente. Vérifiez votre panier.",1)}
     show("Le paiement n'a pas pu démarrer. Réessayez dans un instant ou écrivez-nous.",1);
   }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessayez dans un instant.",1)}
 }
+/* code de parrainage dans le panier */
+let codeEtat=null,codeT=null;
+function totauxPanier(f){
+  const L=cartGet().map(lignePanier).filter(Boolean);const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
+  const pct=Number(B.acomptePct)||40;const brut=L.reduce((t,l)=>t+l.prix*l.qte,0);const r=x=>Math.round(x*100)/100;
+  let rate=0,lib="";const e=codeEtat;const cag=f.elements.cagnotte&&f.elements.cagnotte.checked;
+  if(e&&e.valide&&!e.proprio&&brut>=Number(e.min)){rate=Number(e.remise)/100;lib="Parrainage −"+e.remise+" %"}
+  if(e&&e.valide&&e.proprio&&cag&&Number(e.pct)>0){rate=Math.min(brut*e.pct/100,Number(e.plafond)||250)/brut;lib="Cagnotte "+e.pct+" %"}
+  const plein=L.reduce((t,l)=>t+l.maintenant,0);
+  const net=L.reduce((t,l)=>{const pu=r(l.prix*(1-rate));return t+(l.stock?pu:r(pu*pct/100))*l.qte},0);
+  const rr=f.querySelector("[data-remise]");rr.hidden=!rate;f.querySelector("[data-remise-l]").textContent=lib;f.querySelector("[data-remise-v]").textContent="− "+eur2(plein-net);
+  const rs=f.querySelector("[data-reste]");if(rs)rs.textContent=eur2(L.filter(l=>!l.stock).reduce((t,l)=>{const pu=r(l.prix*(1-rate));return t+(pu-r(pu*pct/100))*l.qte},0));
+  f.querySelector("[data-apayer]").textContent=eur2(net+port);f.querySelector("[data-payer]").textContent="Payer "+eur2(net+port);
+}
+async function verifCode(f){
+  const out=f.querySelector("[data-code-out]");const code=String(f.elements.code.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const keepCag=f.elements.cagnotte&&f.elements.cagnotte.checked;
+  if(!code){codeEtat=null;out.innerHTML="";totauxPanier(f);return}
+  let e=null;try{const{data}=await sb.rpc("code_verifier",{p_code:code,p_email:f.elements.email.value.trim(),p_nom:f.elements.nom.value.trim()});e=data}catch(_){}
+  if(String(f.elements.code.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"")!==code)return;
+  codeEtat=e;const brut=cartGet().map(lignePanier).filter(Boolean).reduce((t,l)=>t+l.prix*l.qte,0);
+  if(!e)out.innerHTML="";
+  else if(!e.valide)out.innerHTML=`<p class="msg err">Ce code n'existe pas.</p>`;
+  else if(e.proprio)out.innerHTML=Number(e.pct)>0?`<label class="consent"><input type="checkbox" name="cagnotte"${keepCag?" checked":""}><span>C'est votre code. Utiliser votre cagnotte de <b>${e.pct} %</b> sur cette commande${Number(e.pct)>=100?" (création offerte, jusqu'à "+eur2(e.plafond)+")":" (jusqu'à "+eur2(e.plafond)+")"}. Elle repartira ensuite à zéro.</span></label>`:`<p class="msg">C'est votre code : offrez-le à vos proches. Votre cagnotte est vide pour l'instant ; elle augmente de 10 % à chaque commande passée avec votre code.</p>`;
+  else out.innerHTML=brut>=Number(e.min)?`<p class="msg">Code accepté : −${e.remise} % sur vos créations.</p>`:`<p class="msg err">Ce code s'applique à partir de ${eur2(e.min)} d'achat.</p>`;
+  totauxPanier(f);
+}
 function vMerci(q){
   const solde=/solde=1/.test(q||"");if(!solde)cartSet([]);
+  const sid=(String(q||"").match(/(?:^|&|\?)s=([^&]+)/)||[])[1];if(sid&&!solde)setTimeout(()=>monCode(decodeURIComponent(sid),0),800);
   return`<section class="wrap pagehead"><p class="eyebrow">Merci</p><h1>${solde?"Solde reçu":"Votre commande est confirmée"}</h1>
   <div class="lead prose"><p>${solde?"Merci, votre paiement est bien reçu. Votre création part très vite : nous vous envoyons le suivi dès l'expédition.":"Merci pour votre confiance. Votre paiement est bien reçu et un e-mail de confirmation vient de partir. Nous préparons votre création et revenons vers vous très vite."}</p></div>
+  <div class="prose" data-moncode style="margin-top:28px"></div>
   <div class="actions" style="margin-top:28px"><a class="btn" href="#/creations">Continuer la visite</a></div></section>`;
+}
+async function monCode(sid,k){
+  let d=null;try{const r=await sb.rpc("code_de_session",{p_session:sid});d=r.data}catch(_){}
+  const box=document.querySelector("[data-moncode]");if(!box)return;
+  if(d&&d.code){box.innerHTML=`<p class="eyebrow">Votre code de parrainage</p><p style="font-size:28px;letter-spacing:.12em;margin:6px 0 10px"><b>${esc(d.code)}</b></p><p>Offrez-le à vos proches : elles ont −10 % sur leur commande à partir de 150 €, et vous gagnez 10 % de cagnotte pour chacune, jusqu'à une création offerte. Pour utiliser votre cagnotte, entrez votre code dans le panier avec la même adresse e-mail. Vous le retrouvez aussi dans votre e-mail de confirmation.</p>`;return}
+  if(k<6)setTimeout(()=>monCode(sid,k+1),2500);
 }
 
 async function payerAcompte(b){
@@ -432,7 +472,9 @@ document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]
   const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g);return}
   const af=e.target.closest("#attForm");if(af){e.preventDefault();inscrire(af);return}
   const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
-document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone"].forEach(k=>keep[k]=f.elements[k].value);render(true);const g=document.getElementById("cartForm");if(g)["nom","email","telephone"].forEach(k=>g.elements[k].value=keep[k])}});
+document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone","code"].forEach(k=>keep[k]=f.elements[k].value);const cg=!!(f.elements.cagnotte&&f.elements.cagnotte.checked);render(true);const g=document.getElementById("cartForm");if(g){["nom","email","telephone","code"].forEach(k=>g.elements[k].value=keep[k]);if(keep.code)verifCode(g).then(()=>{if(cg&&g.elements.cagnotte){g.elements.cagnotte.checked=true;totauxPanier(g)}})}}
+  if(e.target.name==="cagnotte"&&e.target.closest("#cartForm"))totauxPanier(e.target.closest("#cartForm"))});
+document.addEventListener("input",e=>{const f=e.target.closest("#cartForm");if(f&&["code","email","nom"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
 
 cartBadge();
 if(store.get("eug_contenu"))render();
