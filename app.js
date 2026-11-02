@@ -452,7 +452,7 @@ addEventListener("pointerup",()=>{if(!tire)return;tire.p.classList.remove("tire"
 document.addEventListener("click",e=>{if(tire&&tire.m&&e.target.closest(".piste")){e.preventDefault();e.stopPropagation()}},true);
 /* ouverture */
 (function(){const it=$("#intro");if(!it)return;let vu=false;try{vu=sessionStorage.getItem("eug_intro")==="1";sessionStorage.setItem("eug_intro","1")}catch(_){}
-  if(vu||calme()){it.remove();return}setTimeout(()=>it.classList.add("fini"),1400);setTimeout(()=>it.remove(),2300)})();
+  if(vu||calme()){it.remove();return}setTimeout(()=>it.classList.add("fini"),2800);setTimeout(()=>it.remove(),3800)})();
 window.addEventListener("scroll",()=>$("#hd").classList.toggle("scrolled",scrollY>40),{passive:true});
 document.addEventListener("click",e=>{
   const ad=e.target.closest("[data-add]");if(ad){cartAdd(ad.dataset.add);return}
