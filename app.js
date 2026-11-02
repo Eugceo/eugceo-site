@@ -147,7 +147,7 @@ function vAccueil(){
     <a class="lien" href="#/creations">${esc(c.boutons||"Découvrir les créations")}</a>
   </div><div class="defile" aria-hidden="true"></div></section>
   <section class="wrap phrase">
-    <h2 class="rv">Ce n'est pas qu'une création.<br><em>C'est une EUGCEO.</em></h2>
+    <h2 class="rv">Pas juste une création,<br><em>une EUGCEO&#8239;!</em></h2>
     <div class="trait rv"></div>
     ${c.texte?`<p class="rv">${esc(c.texte)}</p>`:""}
     <a class="lien rv" href="#/maison">La Maison</a>
