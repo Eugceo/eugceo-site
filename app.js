@@ -420,7 +420,7 @@ let lastRoute=null;
 function render(keepScroll){
   const full=decodeURIComponent(location.hash.replace(/^#\/?/,""));const q=full.includes("?")?full.slice(full.indexOf("?")+1):"";const h=full.split("?")[0];const [r,arg]=h.split("/");
   if(r==="reserver")return;
-  document.title=TITLES[r]?TITLES[r]+" · EUGCEO":"EUGCEO · Maison de perruques";
+  document.title=TITLES[r]?TITLES[r]+" · EUGCEO":"EUGCEO · Maison de créations capillaires";
   const att=ferme()&&!OUVERT_TJ.includes(r);
   document.body.classList.toggle("attente",ferme());
   document.body.classList.toggle("apercu",apOk&&!!(C.attente&&C.attente.ouvert===false));
