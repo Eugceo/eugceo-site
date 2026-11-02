@@ -319,8 +319,9 @@ function vPanier(){
       <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Rennes · gratuit</option></select></div>
     ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
     ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
-    <div class="fld"><label for="f_code">Code d'ambassadrice <span class="muted">(facultatif)</span></label><input id="f_code" name="code" autocomplete="off" autocapitalize="characters" maxlength="20" style="text-transform:uppercase"></div>
-    <div class="full" data-code-out aria-live="polite"></div>
+    <div class="full promo"><button type="button" class="promo-q" data-promo-toggle aria-expanded="false">Vous avez un code promotionnel ?</button>
+      <div class="promo-box" data-promo hidden><div class="fld"><label for="f_code">Code promotionnel</label><input id="f_code" name="code" autocomplete="off" autocapitalize="characters" maxlength="20" style="text-transform:uppercase" placeholder="Votre code"></div>
+      <div data-code-out aria-live="polite"></div></div></div>
     <div class="cart-total full">
       <div><span>Créations</span><b>${eur2(sous)}</b></div>
       <div data-remise hidden><span data-remise-l>Parrainage</span><b data-remise-v></b></div>
@@ -355,7 +356,16 @@ async function payer(f){
   }catch(_){btn.disabled=false;show("Le paiement n'a pas pu démarrer. Réessayez dans un instant.",1)}
 }
 /* code de parrainage dans le panier */
-let codeEtat=null,codeT=null;
+let codeEtat=null,codeT=null,codeFete=null;
+/* quelques confettis dorés, discrets, quand un code fonctionne */
+function confettis(el){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const box=document.createElement("div");box.className="confettis";box.setAttribute("aria-hidden","true");
+  const tons=["#C4A046","#D9BC6A","#A8883A","#E8D9A8"];
+  for(let i=0;i<26;i++){const c=document.createElement("i");const x=(Math.random()*2-1)*140,y=-(40+Math.random()*70),r=Math.random()*540-270;
+    c.style.cssText=`--x:${x}px;--y:${y}px;--r:${r}deg;background:${tons[i%4]};left:${30+Math.random()*40}%;animation-delay:${Math.random()*.12}s;width:${4+Math.random()*4}px;height:${2+Math.random()*3}px`;box.appendChild(c)}
+  el.style.position="relative";el.appendChild(box);setTimeout(()=>box.remove(),1900);
+}
 function estBundle(p){return/^Bundle/.test(p&&p.construction||"")}
 function totauxPanier(f){
   const L=cartGet().map(lignePanier).filter(Boolean);const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
@@ -382,10 +392,12 @@ async function verifCode(f){
   if(String(f.elements.code.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"")!==code)return;
   codeEtat=e;const brut=cartGet().map(lignePanier).filter(Boolean).reduce((t,l)=>t+l.prix*l.qte,0);
   if(!e)out.innerHTML="";
-  else if(!e.valide)out.innerHTML=`<p class="msg err">Ce code n'existe pas.</p>`;
+  else if(!e.valide)out.innerHTML=`<p class="msg err">Aucune offre ne correspond à ce code.</p>`;
   else if(e.proprio)out.innerHTML=Number(e.solde)>0?`<label class="consent"><input type="checkbox" name="cagnotte"${keepCag?" checked":""}><span>C'est votre code. Utiliser votre cagnotte de <b>${eur2(e.solde)}</b> sur cette commande. Le montant exact est calculé au paiement ; ce qui n'est pas utilisé est gardé pour la prochaine fois.</span></label>`:`<p class="msg">C'est votre code : il est fait pour les personnes que vous recommandez. Votre cagnotte est vide pour l'instant.</p>`;
-  else if(e.deja)out.innerHTML=`<p class="msg err">Un code d'ambassadrice ne s'utilise qu'une fois par cliente, et vous en avez déjà profité.</p>`;
-  else out.innerHTML=brut>=Number(e.min)?`<p class="msg">Code accepté : −${e.remise} % sur vos créations.</p>`:`<p class="msg err">Ce code s'applique à partir de ${eur2(e.min)} d'achat.</p>`;
+  else if(e.deja)out.innerHTML=`<p class="msg err">Ce code ne s'utilise qu'une fois par cliente, et vous en avez déjà profité.</p>`;
+  else if(brut>=Number(e.min)){out.innerHTML=`<p class="promo-ok"><span>Code ${esc(e.code)} appliqué</span><b>−${e.remise} % sur vos créations</b></p>`;if(codeFete!==e.code){codeFete=e.code;confettis(out)}}
+  else out.innerHTML=`<p class="msg err">Ce code s'applique à partir de ${eur2(e.min)} d'achat.</p>`;
+  if(!(e&&e.valide&&!e.proprio&&!e.deja&&brut>=Number(e.min)))codeFete=null;
   totauxPanier(f);
 }
 function vMerci(q){
@@ -459,6 +471,7 @@ document.addEventListener("click",e=>{
   const cq=e.target.closest("[data-cq]");if(cq){const c=cartGet();const it=c.find(x=>x.id===cq.dataset.id);const p=P.find(x=>x.id===cq.dataset.id);if(it&&p){it.qte=Math.max(1,Math.min(Number(p.disponible)||1,it.qte+Number(cq.dataset.cq)))}cartSet(c);render(true);return}
   const cr=e.target.closest("[data-crm]");if(cr){cartSet(cartGet().filter(x=>x.id!==cr.dataset.crm));render(true);return}
   const pa=e.target.closest("[data-payer-acompte]");if(pa){payerAcompte(pa);return}
+  const pt=e.target.closest("[data-promo-toggle]");if(pt){const bx=pt.parentNode.querySelector("[data-promo]");const o=bx.hidden;bx.hidden=!o;pt.setAttribute("aria-expanded",String(o));if(o){const i=bx.querySelector("input");if(i)i.focus()}return}
   const f=e.target.closest("[data-f]");if(f){filtre=f.dataset.f;render(true);return}
   const g=e.target.closest("[data-g]");
   if(g){const h=decodeURIComponent(location.hash.replace(/^#\/?/,"")).split("/");const p=P.find(x=>x.id===h[1]);if(!p)return;
@@ -471,7 +484,7 @@ document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]
   const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g);return}
   const af=e.target.closest("#attForm");if(af){e.preventDefault();inscrire(af);return}
   const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
-document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone","code"].forEach(k=>keep[k]=f.elements[k].value);const cg=!!(f.elements.cagnotte&&f.elements.cagnotte.checked);render(true);const g=document.getElementById("cartForm");if(g){["nom","email","telephone","code"].forEach(k=>g.elements[k].value=keep[k]);if(keep.code)verifCode(g).then(()=>{if(cg&&g.elements.cagnotte){g.elements.cagnotte.checked=true;totauxPanier(g)}})}}
+document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone","code"].forEach(k=>keep[k]=f.elements[k].value);const cg=!!(f.elements.cagnotte&&f.elements.cagnotte.checked);render(true);const g=document.getElementById("cartForm");if(g){["nom","email","telephone","code"].forEach(k=>g.elements[k].value=keep[k]);if(keep.code){const bx=g.querySelector("[data-promo]");if(bx)bx.hidden=false}if(keep.code)verifCode(g).then(()=>{if(cg&&g.elements.cagnotte){g.elements.cagnotte.checked=true;totauxPanier(g)}})}}
   if(e.target.name==="cagnotte"&&e.target.closest("#cartForm"))totauxPanier(e.target.closest("#cartForm"))});
 document.addEventListener("input",e=>{const f=e.target.closest("#cartForm");if(f&&["code","email","nom","telephone"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
 

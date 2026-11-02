@@ -461,3 +461,15 @@ body.apercu .hd::after{background:var(--ink)}
 .burger>.bars,.burger>.txt{height:auto;background:none;transform:none!important}
 .burger>.txt{display:inline}
 .burger .bars span{height:1px;background:currentColor}
+
+/* Panier : code promotionnel */
+.promo-q{background:none;border:0;padding:0;font:inherit;font-size:14px;color:var(--ink);text-decoration:underline;text-decoration-color:var(--or);text-underline-offset:4px;cursor:pointer}
+.promo-q[aria-expanded="true"]{text-decoration:none;color:var(--muted)}
+.promo-box{margin-top:14px;display:flex;flex-direction:column;gap:10px;max-width:420px}
+.promo-ok{display:flex;flex-direction:column;gap:2px;margin:0;padding:12px 16px;border:1px solid var(--or);background:linear-gradient(180deg,rgba(196,160,70,.08),rgba(196,160,70,.02));animation:promoIn .6s var(--lent) both}
+.promo-ok span{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9b7c2e}
+.promo-ok b{font-family:var(--serif);font-weight:500;font-size:22px}
+@keyframes promoIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.confettis{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.confettis i{position:absolute;top:50%;border-radius:1px;opacity:0;animation:confetti 1.6s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes confetti{0%{opacity:0;transform:translate(0,0) rotate(0)}12%{opacity:1}60%{opacity:1;transform:translate(var(--x),var(--y)) rotate(var(--r))}100%{opacity:0;transform:translate(calc(var(--x)*1.1),calc(var(--y) + 90px)) rotate(calc(var(--r)*1.6))}}
