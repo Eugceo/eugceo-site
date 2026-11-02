@@ -317,6 +317,7 @@ function vPanier(){
       <option value="fr"${liv==="fr"?" selected":""}>France métropolitaine · ${eur2(B.livraisonFR)}</option>
       <option value="dom"${liv==="dom"?" selected":""}>Outre-mer (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte) · ${eur2(B.livraisonDOM)}</option>
       <option value="retrait"${liv==="retrait"?" selected":""}>Retrait sur rendez-vous à Rennes · gratuit</option></select></div>
+    ${liv==="retrait"?`<p class="note-s full" style="margin:-6px 0 0;color:#9b7c2e">Retrait en main propre uniquement, sur rendez-vous à Rennes : rien ne vous sera envoyé par la poste. Pour être livrée, choisissez une livraison ci-dessus.</p>`:""}
     ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("email","E-mail","email",{req:1,ac:"email"})}
     ${field("telephone","Téléphone","tel",{ac:"tel",max:30})}
     <div class="full promo"><button type="button" class="promo-q" data-promo-toggle aria-expanded="false">Vous avez un code promotionnel ?</button>
