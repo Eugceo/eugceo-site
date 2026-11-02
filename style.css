@@ -473,3 +473,28 @@ body.apercu .hd::after{background:var(--ink)}
 .confettis{position:absolute;inset:0;pointer-events:none;overflow:visible}
 .confettis i{position:absolute;top:50%;border-radius:1px;opacity:0;animation:confetti 1.6s cubic-bezier(.2,.7,.3,1) forwards}
 @keyframes confetti{0%{opacity:0;transform:translate(0,0) rotate(0)}12%{opacity:1}60%{opacity:1;transform:translate(var(--x),var(--y)) rotate(var(--r))}100%{opacity:0;transform:translate(calc(var(--x)*1.1),calc(var(--y) + 90px)) rotate(calc(var(--r)*1.6))}}
+
+/* ===== Version ordinateur ===== */
+.hd-liens{display:none}
+@media (min-width:1100px){
+  .hd .burger{display:none!important}
+  .hd-g{display:flex;align-items:center}
+  .hd-d{display:flex;justify-content:flex-end;gap:32px;align-items:center}
+  .hd-liens{display:flex;gap:32px}
+  .hd-liens a{color:inherit;text-decoration:none;font:400 11px/1 var(--sans);letter-spacing:.26em;text-transform:uppercase;position:relative;padding:12px 0}
+  .hd-rdv{position:relative}
+  .hd-liens a::after,.hd-rdv::after{content:"";position:absolute;left:0;right:100%;bottom:0;height:1px;background:var(--or);transition:right .35s var(--lent)}
+  .hd-liens a:hover::after,.hd-rdv:hover::after,body[data-r="creations"] .hd-liens a[data-r="creations"]::after,body[data-r="creation"] .hd-liens a[data-r="creations"]::after,body[data-r="maison"] .hd-liens a[data-r="maison"]::after,body[data-r="prestations"] .hd-liens a[data-r="prestations"]::after,body[data-r="entretien"] .hd-liens a[data-r="entretien"]::after,body[data-r="contact"] .hd-liens a[data-r="contact"]::after{right:0}
+}
+@media (min-width:1280px){
+  .grid{grid-template-columns:repeat(4,1fr)}
+}
+@media (min-width:1024px){
+  /* panier : articles à gauche, coordonnées et paiement à droite */
+  section.wrap:has(>.cart){display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0 64px;align-items:start}
+  section.wrap:has(>.cart)>#cartForm{margin-top:0!important;position:sticky;top:100px;grid-template-columns:1fr 1fr;padding:32px;border:1px solid var(--line);background:#fff}
+  .product{gap:80px}
+}
+
+.promo-box[hidden]{display:none}
+.cart-total [hidden]{display:none!important}
