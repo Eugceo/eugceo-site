@@ -191,7 +191,7 @@ function vCreation(id){
     <div class="info">
       <span class="tag${dispo(p)?" ok":""}" style="align-self:flex-start">${dispo(p)?"Disponible · expédiée sous 48 h":"Sur commande · 15 à 30 jours"}</span>
       <h1 style="font-size:clamp(34px,4.4vw,52px)">${esc(t)}</h1>
-      <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>
+      <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>${pr!=null&&estBundle(p)&&Number(B.lotRemise)>0?`<p class="muted" style="margin-top:-6px">−${eur2(B.lotRemise)} par lot de ${Number(B.lotTaille)||3} bundles, appliqué dans le panier</p>`:""}
       ${s.description?`<div class="prose" style="color:var(--muted)">${paras(s.description)}</div>`:""}
       ${specs.length?`<dl class="specs">${specs.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
       <div class="actions">${pr!=null?`<button type="button" class="btn" data-add="${esc(p.id)}">${dispo(p)?"Ajouter au panier":`Commander · acompte ${Number(B.acomptePct)||40} %`}</button><a class="btn ghost" href="#reserver" data-scroll="reserver">Une question ?</a>`:`<a class="btn" href="#reserver" data-scroll="reserver">${dispo(p)?"Réserver cette création":"La commander"}</a>`}</div>
@@ -356,16 +356,22 @@ async function payer(f){
 }
 /* code de parrainage dans le panier */
 let codeEtat=null,codeT=null;
+function estBundle(p){return/^Bundle/.test(p&&p.construction||"")}
 function totauxPanier(f){
   const L=cartGet().map(lignePanier).filter(Boolean);const liv=store.get("eug_liv")||"fr";const port=liv==="fr"?Number(B.livraisonFR):liv==="dom"?Number(B.livraisonDOM):0;
   const pct=Number(B.acomptePct)||40;const brut=L.reduce((t,l)=>t+l.prix*l.qte,0);const r=x=>Math.round(x*100)/100;
   let rate=0,lib="";const e=codeEtat;const cag=f.elements.cagnotte&&f.elements.cagnotte.checked;
   if(e&&e.valide&&!e.proprio&&!e.deja&&brut>=Number(e.min)){rate=Number(e.remise)/100;lib="Code "+e.code+" −"+e.remise+" %"}
   if(e&&e.valide&&e.proprio&&cag&&Number(e.solde)>0){rate=Math.min(Number(e.solde),brut)/brut;lib="Votre cagnotte"}
+  /* remise par lot de bundles : un seul avantage, on garde le plus intéressant */
+  const nbB=L.reduce((t,l)=>t+(estBundle(l.p)?l.qte:0),0);const lotT=Number(B.lotTaille)||3;const lotTot=Number(B.lotRemise)>0?Math.floor(nbB/lotT)*Number(B.lotRemise):0;
+  const remL=L.map(l=>rate?l.prix*l.qte*rate:0);
+  if(lotTot>0&&lotTot>remL.reduce((a,x)=>a+x,0)){L.forEach((l,i)=>remL[i]=estBundle(l.p)?lotTot*l.qte/nbB:0);lib="Lot de "+lotT+" bundles";if(e&&e.valide&&!e.proprio)lib+=" (plus avantageux que le code)"}
   const plein=L.reduce((t,l)=>t+l.maintenant,0);
-  const net=L.reduce((t,l)=>{const pu=r(l.prix*(1-rate));return t+(l.stock?pu:r(pu*pct/100))*l.qte},0);
+  const net=L.reduce((t,l,i)=>{const pu=r(l.prix-remL[i]/l.qte);return t+(l.stock?pu:r(pu*pct/100))*l.qte},0);
+  rate=remL.some(x=>x>0)?1:0;
   const rr=f.querySelector("[data-remise]");rr.hidden=!rate;f.querySelector("[data-remise-l]").textContent=lib;f.querySelector("[data-remise-v]").textContent="− "+eur2(plein-net);
-  const rs=f.querySelector("[data-reste]");if(rs)rs.textContent=eur2(L.filter(l=>!l.stock).reduce((t,l)=>{const pu=r(l.prix*(1-rate));return t+(pu-r(pu*pct/100))*l.qte},0));
+  const rs=f.querySelector("[data-reste]");if(rs)rs.textContent=eur2(L.reduce((t,l,i)=>{if(l.stock)return t;const pu=r(l.prix-remL[i]/l.qte);return t+(pu-r(pu*pct/100))*l.qte},0));
   f.querySelector("[data-apayer]").textContent=eur2(net+port);f.querySelector("[data-payer]").textContent="Payer "+eur2(net+port);
 }
 async function verifCode(f){
@@ -408,6 +414,7 @@ function render(keepScroll){
   if(att){document.title="EUGCEO · Bientôt";main.innerHTML=vAttente();document.body.dataset.r="attente";lastRoute="attente";footer();return}
   if(r==="devis"){document.title="Votre devis · EUGCEO";if(lastRoute!=="devis/"+arg){lastRoute="devis/"+arg;window.scrollTo(0,0);loadDevis(arg||"")}footer();return}
   main.innerHTML=r==="creation"?vCreation(arg):r==="merci"?vMerci(q):(ROUTES[r]||vAccueil)();
+  if(r==="panier"){codeEtat=null;const g=document.getElementById("cartForm");if(g)totauxPanier(g)}
   document.body.dataset.r=(r==="creation"||ROUTES[r]||r==="merci")?(r||"accueil"):"accueil";armer();
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
