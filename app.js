@@ -212,12 +212,109 @@ function vPrestations(){
   <div class="actions" style="margin-top:40px"><a class="btn" href="#/rendezvous">Prendre rendez-vous</a><a class="btn ghost" href="#/contact">Poser une question</a></div></section>
   ${c.image||c.video?`<section class="sec"><div class="wrap">${visual(c)}</div></section>`:""}`;
 }
+/* ---------- prise de rendez-vous : prestation, lieu, jour, heure ---------- */
+const RDV_DEF={actif:true,ville:"Cesson-Sévigné",origine:[48.1211,-1.6036],prestations:[{nom:"Pose de perruque",duree:120},{nom:"Pose de tissage",duree:180}],jours:{},fermes:[],pas:30,delaiH:24,horizonJ:45,marge:30,domicile:true,km:{tranche:5,prix:3,allerRetour:false,max:0}};
+function RC(){const c=Object.assign({},RDV_DEF,C.rdv||{});c.km=Object.assign({},RDV_DEF.km,(C.rdv||{}).km||{});return c}
+let RV={prest:null,lieu:"",adr:"",km:null,frais:null,geo:"",jour:"",heure:"",occ:null,voirPlus:false,envoye:null};
+const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const mn=s=>{const[a,b]=String(s||"0:0").split(":");return Number(a)*60+Number(b||0)};
+const dureeTxt=m=>{const h=Math.floor(m/60),r=m%60;return h?(h+" h"+(r?" "+String(r).padStart(2,"0"):"")):r+" min"};
+const isoJour=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const jourTxt=s=>new Date(s+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+async function rdvCharger(){const{data,error}=await sb.rpc("rdv_occupes");RV.occ=error?[]:(data||[]);if(location.hash.startsWith("#/rendezvous"))render(true)}
+function rdvCreneaux(jour,duree){
+  const c=RC();if((c.fermes||[]).includes(jour))return[];
+  const wd=new Date(jour+"T12:00:00").getDay()||7;const plages=(c.jours||{})[wd]||[];
+  const limite=Date.now()+Number(c.delaiH||0)*3600e3;const pas=Number(c.pas)||30,marge=Number(c.marge)||0;
+  const occ=(RV.occ||[]).filter(o=>o.jour===jour).map(o=>[mn(o.heure),mn(o.heure)+Number(o.duree||60)]);
+  const out=[];
+  for(const p of plages){if(!p||!p[0]||!p[1])continue;const a=mn(p[0]),b=mn(p[1]);
+    for(let t=a;t+duree<=b;t+=pas){if(new Date(jour+"T"+hm(t)+":00").getTime()<limite)continue;
+      if(occ.some(([s,e])=>t<e+marge&&t+duree+marge>s))continue;out.push(hm(t))}}
+  return out}
+function rdvJours(duree){const c=RC();const out=[];const d=new Date();for(let i=0;i<(Number(c.horizonJ)||45);i++){const s=isoJour(d);const cr=rdvCreneaux(s,duree);if(cr.length)out.push([s,cr.length]);d.setDate(d.getDate()+1)}return out}
+function rdvFrais(km){const k=RC().km;const dist=k.allerRetour?km*2:km;return Math.ceil(dist/(Number(k.tranche)||5))*(Number(k.prix)||0)}
+async function rdvGeo(){
+  const adr=RV.adr.trim();if(adr.length<6){RV.geo="Indiquez l'adresse complète (numéro, rue, code postal, ville).";RV.km=null;RV.frais=null;render(true);return}
+  RV.geo="Calcul de la distance…";render(true);
+  try{const r=await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q="+encodeURIComponent(adr));const j=await r.json();const f=j.features&&j.features[0];
+    if(!f||f.properties.score<0.4){RV.geo="Adresse introuvable. Vérifiez-la (numéro, rue, code postal, ville).";RV.km=null;RV.frais=null;render(true);return}
+    const[lng,lat]=f.geometry.coordinates;const[la0,lo0]=RC().origine||RDV_DEF.origine;const R=6371,toR=x=>x*Math.PI/180;
+    const dl=toR(lat-la0),dn=toR(lng-lo0);const h=Math.sin(dl/2)**2+Math.cos(toR(la0))*Math.cos(toR(lat))*Math.sin(dn/2)**2;
+    const km=Math.max(1,Math.round(2*R*Math.asin(Math.sqrt(h))*1.3));const max=Number(RC().km.max)||0;
+    RV.adr=f.properties.label;RV.km=km;RV.frais=rdvFrais(km);RV.geo=max&&km>max?"Cette adresse est à environ "+km+" km : c'est au-delà de notre zone de déplacement ("+max+" km). Choisissez un rendez-vous à "+RC().ville+", ou écrivez-nous.":"";
+    if(max&&km>max){RV.km=null;RV.frais=null}render(true)}
+  catch(_){RV.geo="Le calcul n'a pas fonctionné. Réessayez dans un instant.";render(true)}}
 function vRdv(){
-  const c=C.rendezvous||{};
-  return`${pageHead(c,"Rendez-vous")}
-  <section class="wrap"><div class="formcard">${form("rdv")}</div></section>
+  const c=C.rendezvous||{},R=RC();
+  if(RV.occ===null){RV.occ=[];rdvCharger()}
+  const prests=(R.prestations||[]).filter(p=>p&&p.nom&&Number(p.duree)>0);
+  const ouvert=R.actif!==false&&prests.length&&Object.values(R.jours||{}).some(x=>x&&x.length);
+  const intro=`${pageHead(c,"Rendez-vous")}`;
+  if(!ouvert)return`${intro}<section class="wrap"><div class="formcard">${form("rdv")}</div></section>${blocks(c.sections)?`<section class="sec"><div class="wrap">${blocks(c.sections)}</div></section>`:""}`;
+  if(RV.envoye){const e=RV.envoye;return`${intro}<section class="wrap"><div class="formcard rdv-ok"><p class="eyebrow">Demande envoyée</p><h3>Merci ${esc(e.prenom)}</h3>
+    <p>Vous avez demandé : <b>${esc(e.prest)}</b>, ${esc(jourTxt(e.jour))} à ${esc(e.heure.replace(":"," h "))}${e.lieu==="domicile"?", chez vous":", à "+esc(R.ville)}.</p>
+    <p>Ce rendez-vous n'est <b>pas encore confirmé</b>. Nous vous répondons rapidement par WhatsApp ou par e-mail.${e.lieu==="domicile"?"":" L'adresse exacte vous sera envoyée avec la confirmation."}</p>
+    <button type="button" class="btn ghost" data-rv="nouveau">Faire une autre demande</button></div></section>`}
+  const p=RV.prest!=null?prests[RV.prest]:null;
+  const step=(n,t,body,on)=>`<div class="rv-step${on?"":" off"}"><h3><span>${n}</span>${t}</h3>${on?body:""}</div>`;
+  const s1=`<div class="rv-pills">${prests.map((x,i)=>`<button type="button" class="rv-pill" data-rv="prest" data-i="${i}" aria-pressed="${RV.prest===i}"><b>${esc(x.nom)}</b><span>environ ${esc(dureeTxt(Number(x.duree)))}</span></button>`).join("")}</div>`;
+  const k=R.km;const s2=`<div class="rv-pills">
+    <button type="button" class="rv-pill" data-rv="lieu" data-v="cesson" aria-pressed="${RV.lieu==="cesson"}"><b>À ${esc(R.ville)}</b><span>Adresse envoyée à la confirmation</span></button>
+    ${R.domicile!==false?`<button type="button" class="rv-pill" data-rv="lieu" data-v="domicile" aria-pressed="${RV.lieu==="domicile"}"><b>Chez vous</b><span>${esc(k.prix)} € par tranche de ${esc(k.tranche)} km${k.allerRetour?" (aller-retour)":""}</span></button>`:""}</div>
+    ${RV.lieu==="domicile"?`<div class="rv-adr"><div class="fld"><label for="rv_adr">Votre adresse</label><input id="rv_adr" autocomplete="street-address" maxlength="200" value="${esc(RV.adr)}" placeholder="Numéro, rue, code postal, ville"></div><button type="button" class="btn ghost" data-rv="geo">Calculer</button></div>
+    ${RV.geo?`<p class="note-s rv-msg">${esc(RV.geo)}</p>`:""}${RV.km!=null?`<p class="rv-frais">Environ <b>${RV.km} km</b> depuis ${esc(R.ville)} · frais de déplacement <b>${RV.frais} €</b><br><span>Estimation : le montant exact est confirmé avec le rendez-vous.</span></p>`:""}`:""}`;
+  const lieuOk=RV.lieu==="cesson"||(RV.lieu==="domicile"&&RV.km!=null);
+  let s3="";if(p&&lieuOk){const js=rdvJours(Number(p.duree));const vis=RV.voirPlus?js:js.slice(0,10);
+    s3=js.length?`<div class="rv-days">${vis.map(([d,nb])=>{const dt=new Date(d+"T12:00:00");return`<button type="button" class="rv-day" data-rv="jour" data-v="${d}" aria-pressed="${RV.jour===d}"><span>${dt.toLocaleDateString("fr-FR",{weekday:"short"})}</span><b>${dt.getDate()}</b><span>${dt.toLocaleDateString("fr-FR",{month:"short"})}</span></button>`}).join("")}</div>${js.length>vis.length?`<button type="button" class="linkbtn rv-plus" data-rv="plus">Voir d'autres dates</button>`:""}`
+      :`<p class="note-s">Plus de créneau libre pour cette prestation dans les semaines à venir. Écrivez-nous depuis la page <a href="#/contact">Contact</a>.</p>`}
+  let s4="";if(p&&lieuOk&&RV.jour){const cr=rdvCreneaux(RV.jour,Number(p.duree));s4=`<p class="rv-jour">${esc(jourTxt(RV.jour))}</p><div class="rv-slots">${cr.map(h=>`<button type="button" class="rv-slot" data-rv="heure" data-v="${h}" aria-pressed="${RV.heure===h}">${h.replace(":"," h ")}</button>`).join("")||`<p class="note-s">Ce jour n'a plus de créneau libre.</p>`}</div>`}
+  const pret=p&&lieuOk&&RV.jour&&RV.heure;
+  const s5=`<form class="form rv-form" id="rvForm" novalidate>
+    ${field("nom","Nom et prénom","text",{req:1,ac:"name"})}${field("telephone","Téléphone (WhatsApp de préférence)","tel",{ac:"tel",max:30,req:1})}${field("email","E-mail","email",{ac:"email"})}
+    ${field("message","Un détail à nous dire ? (facultatif)","textarea",{full:1})}
+    <div class="hp" aria-hidden="true"><label>Ne pas remplir<input name="site_web" tabindex="-1" autocomplete="off"></label></div>
+    <p class="rv-recap full">${p?`<b>${esc(p.nom)}</b> · ${esc(jourTxt(RV.jour))} à ${esc((RV.heure||"").replace(":"," h "))} · ${RV.lieu==="domicile"?"chez vous ("+RV.frais+" € de déplacement)":"à "+esc(R.ville)}`:""}</p>
+    <label class="consent full"><input type="checkbox" name="ok" required><span>J'accepte qu'EUGCEO utilise ces informations pour organiser ce rendez-vous. Voir la page <a href="#/confidentialite">Confidentialité</a>.</span></label>
+    <div class="full"><button class="btn" type="submit">Demander ce rendez-vous</button></div>
+    <p class="note-s full" style="margin-top:0">Votre demande n'est confirmée qu'après notre réponse, par WhatsApp ou par e-mail.</p>
+    <div class="full" data-out aria-live="polite"></div></form>`;
+  return`${intro}<section class="wrap"><div class="formcard rv">
+    ${step(1,"La prestation",s1,true)}
+    ${step(2,"Le lieu",s2,!!p)}
+    ${step(3,"Le jour",s3||(p&&lieuOk?"":""),!!(p&&lieuOk))}
+    ${step(4,"L'heure",s4,!!(p&&lieuOk&&RV.jour))}
+    ${step(5,"Vos coordonnées",s5,!!pret)}
+  </div></section>
   ${blocks(c.sections)?`<section class="sec"><div class="wrap">${blocks(c.sections)}</div></section>`:""}`;
 }
+function rdvClic(b){const a=b.dataset.rv;
+  if(a==="prest"){RV.prest=Number(b.dataset.i);RV.jour="";RV.heure=""}
+  else if(a==="lieu"){RV.lieu=b.dataset.v;RV.jour="";RV.heure="";if(RV.lieu==="domicile"&&RV.km==null)setTimeout(()=>{const i=document.getElementById("rv_adr");if(i)i.focus()},50)}
+  else if(a==="geo"){const i=document.getElementById("rv_adr");RV.adr=i?i.value:"";rdvGeo();return}
+  else if(a==="jour"){RV.jour=b.dataset.v;RV.heure=""}
+  else if(a==="heure"){RV.heure=b.dataset.v;render(true);setTimeout(()=>{const f=document.getElementById("rvForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},60);return}
+  else if(a==="plus"){RV.voirPlus=true}
+  else if(a==="nouveau"){RV={prest:null,lieu:"",adr:"",km:null,frais:null,geo:"",jour:"",heure:"",occ:null,voirPlus:false,envoye:null}}
+  render(true)}
+async function rdvEnvoyer(f){
+  const out=f.querySelector("[data-out]"),btn=f.querySelector("button[type=submit]");const show=(t,err)=>{out.innerHTML=`<p class="msg${err?" err":""}">${esc(t)}</p>`};
+  const v=n=>String((f.elements[n]||{}).value||"").trim();if(v("site_web"))return show("Merci, votre demande est bien envoyée.");
+  const R=RC(),p=R.prestations[RV.prest];const nom=v("nom"),tel=v("telephone"),email=v("email");
+  if(nom.length<2)return show("Indiquez votre nom.",1);
+  if(tel.replace(/\D/g,"").length<9)return show("Indiquez un numéro de téléphone complet : c'est par là que nous confirmons.",1);
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return show("L'adresse e-mail semble incomplète.",1);
+  if(!f.elements.ok.checked)return show("Cochez la case d'accord pour que nous puissions organiser le rendez-vous.",1);
+  btn.disabled=true;await rdvCharger();
+  if(!rdvCreneaux(RV.jour,Number(p.duree)).includes(RV.heure)){btn.disabled=false;RV.heure="";render(true);return}
+  const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+  const data={type:"rdv",nom,email,telephone:tel,message:v("message"),statut:"Nouvelle",envoyeLe:new Date().toISOString(),page:"#/rendezvous",
+    prestation:p.nom,duree:Number(p.duree),date:RV.jour,heure:RV.heure,lieu:RV.lieu,rdvStatut:"À confirmer",
+    ...(RV.lieu==="domicile"?{adresseCliente:RV.adr,kmEstime:RV.km,fraisDeplacement:RV.frais}:{})};
+  const{error}=await sb.from("demandes").insert({id,data});btn.disabled=false;
+  if(error)return show("L'envoi n'a pas fonctionné. Réessayez, ou écrivez-nous à "+((C.contact||{}).email||"contact@eugceo.fr")+".",1);
+  sb.functions.invoke("notifier-rdv",{body:{id}}).catch(()=>{});
+  RV.envoye={prenom:nom.split(" ")[0],prest:p.nom,jour:RV.jour,heure:RV.heure,lieu:RV.lieu};RV.occ=null;window.scrollTo(0,0);render(true)}
 function vMaison(){
   const c=C.maison||{};
   const aMedia=!!(c.image||c.video);
@@ -469,6 +566,7 @@ document.addEventListener("click",e=>{if(tire&&tire.m&&e.target.closest(".piste"
   if(vu||calme()){it.remove();return}setTimeout(()=>it.classList.add("fini"),2800);setTimeout(()=>it.remove(),3800)})();
 window.addEventListener("scroll",()=>$("#hd").classList.toggle("scrolled",scrollY>40),{passive:true});
 document.addEventListener("click",e=>{
+  const rv=e.target.closest("[data-rv]");if(rv){e.preventDefault();rdvClic(rv);return}
   const ad=e.target.closest("[data-add]");if(ad){cartAdd(ad.dataset.add);return}
   const cq=e.target.closest("[data-cq]");if(cq){const c=cartGet();const it=c.find(x=>x.id===cq.dataset.id);const p=P.find(x=>x.id===cq.dataset.id);if(it&&p){it.qte=Math.max(1,Math.min(Number(p.disponible)||1,it.qte+Number(cq.dataset.cq)))}cartSet(c);render(true);return}
   const cr=e.target.closest("[data-crm]");if(cr){cartSet(cartGet().filter(x=>x.id!==cr.dataset.crm));render(true);return}
@@ -482,13 +580,14 @@ document.addEventListener("click",e=>{
     document.querySelectorAll(".gal-thumbs button").forEach(b=>b.setAttribute("aria-current",String(b===g)));return}
   const sc=e.target.closest("[data-scroll]");if(sc){e.preventDefault();const t=document.getElementById(sc.dataset.scroll);if(t){t.scrollIntoView({behavior:"smooth"});const i=t.querySelector("input");if(i)setTimeout(()=>i.focus({preventScroll:true}),500)}}
 });
-document.addEventListener("submit",e=>{const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f);return}
+document.addEventListener("submit",e=>{const rf=e.target.closest("#rvForm");if(rf){e.preventDefault();rdvEnvoyer(rf);return}const f=e.target.closest("form[data-kind]");if(f){e.preventDefault();submit(f);return}
   const g=e.target.closest("#dvAccept");if(g){e.preventDefault();accepterDevis(g);return}
   const af=e.target.closest("#attForm");if(af){e.preventDefault();inscrire(af);return}
   const cf=e.target.closest("#cartForm");if(cf){e.preventDefault();payer(cf)}});
 document.addEventListener("change",e=>{if(e.target.id==="f_liv"){store.set("eug_liv",e.target.value);const f=e.target.closest("form");const keep={};["nom","email","telephone","code"].forEach(k=>keep[k]=f.elements[k].value);const cg=!!(f.elements.cagnotte&&f.elements.cagnotte.checked);render(true);const g=document.getElementById("cartForm");if(g){["nom","email","telephone","code"].forEach(k=>g.elements[k].value=keep[k]);if(keep.code){const bx=g.querySelector("[data-promo]");if(bx)bx.hidden=false}if(keep.code)verifCode(g).then(()=>{if(cg&&g.elements.cagnotte){g.elements.cagnotte.checked=true;totauxPanier(g)}})}}
   if(e.target.name==="cagnotte"&&e.target.closest("#cartForm"))totauxPanier(e.target.closest("#cartForm"))});
-document.addEventListener("input",e=>{const f=e.target.closest("#cartForm");if(f&&["code","email","nom","telephone"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="rv_adr"){e.preventDefault();RV.adr=e.target.value;rdvGeo()}});
+document.addEventListener("input",e=>{if(e.target.id==="rv_adr"){RV.adr=e.target.value}const f=e.target.closest("#cartForm");if(f&&["code","email","nom","telephone"].includes(e.target.name)&&(e.target.name==="code"||f.elements.code.value)){clearTimeout(codeT);codeT=setTimeout(()=>verifCode(f),450)}});
 
 cartBadge();
 if(store.get("eug_contenu"))render();
