@@ -220,9 +220,10 @@ function vRdv(){
 }
 function vMaison(){
   const c=C.maison||{};
-  return`<section class="wrap pagehead split" style="align-items:end"><div><p class="eyebrow">Notre histoire</p><h1>${esc(c.titre||"")}</h1><div class="lead prose">${paras(c.texte)}</div></div><div>${visual(c)}</div></section>
+  const aMedia=!!(c.image||c.video);
+  return`${aMedia?`<section class="wrap pagehead split" style="align-items:end"><div><p class="eyebrow">Notre histoire</p><h1>${esc(c.titre||"")}</h1><div class="lead prose">${paras(c.texte)}</div></div><div>${visual(c)}</div></section>`:`<section class="wrap pagehead"><p class="eyebrow">Notre histoire</p><h1>${esc(c.titre||"")}</h1><div class="lead prose">${paras(c.texte)}</div></section>`}
   ${(c.sections||[]).length?`<section class="sec"><div class="wrap">${blocks(c.sections)}</div></section>`:""}
-  <section class="wrap"><div class="actions"><a class="btn" href="#/creations">Voir les créations</a></div></section>`;
+  <section class="wrap"><div class="actions"${aMedia?"":' style="justify-content:center"'}><a class="btn" href="#/creations">Voir les créations</a></div></section>`;
 }
 function vEntretien(){
   const c=C.entretien||{};
