@@ -530,7 +530,8 @@ function render(keepScroll){
   main.classList.toggle("nomargin",false);
   document.querySelectorAll(".nav a").forEach(a=>{const t=a.getAttribute("href").replace("#/","");a.toggleAttribute("aria-current",false);if(t&&(t===r||(r==="creation"&&t==="creations")))a.setAttribute("aria-current","page")});
   const route=r+"/"+(arg||"");
-  if(!keepScroll&&route!==lastRoute){window.scrollTo(0,0);if(lastRoute!==null)main.focus({preventScroll:true})}
+  if(!keepScroll&&route!==lastRoute){const y=history.state&&history.state.r===route&&typeof history.state.y==="number"?history.state.y:0;
+    if(lastRoute!==null)main.focus({preventScroll:true});const go=()=>window.scrollTo({top:y,left:0,behavior:"instant"});go();if(y){setTimeout(go,120);setTimeout(go,450)}}
   lastRoute=route;
   footer();
 }
@@ -539,6 +540,9 @@ function footer(){const c=C.contact||{};const tel=(c.telephone||"").replace(/\s/
   $("#yr").textContent=new Date().getFullYear()}
 
 /* ---------- événements ---------- */
+/* retour : on revient au même endroit de la page */
+try{history.scrollRestoration="manual"}catch(_){}
+let ySave=0;window.addEventListener("scroll",()=>{clearTimeout(ySave);ySave=setTimeout(()=>{try{history.replaceState({...(history.state||{}),y:window.scrollY,r:lastRoute},"")}catch(_){}},120)},{passive:true});
 const nav=$("#nav"),burger=$("#burger");
 function menu(open){nav.classList.toggle("open",open);document.body.classList.toggle("menu-ouvert",open);const tx=burger.querySelector(".txt");if(tx)tx.textContent=open?"Fermer":"Menu";burger.setAttribute("aria-expanded",String(open));burger.setAttribute("aria-label",open?"Fermer le menu":"Ouvrir le menu");document.body.style.overflow=open?"hidden":""}
 burger.addEventListener("click",()=>menu(!nav.classList.contains("open")));
