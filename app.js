@@ -191,7 +191,7 @@ function vCreation(id){
     <div class="info">
       <span class="tag${dispo(p)?" ok":""}" style="align-self:flex-start">${dispo(p)?"Disponible · expédiée sous 48 h":"Sur commande · 15 à 30 jours"}</span>
       <h1 style="font-size:clamp(34px,4.4vw,52px)">${esc(t)}</h1>
-      <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>${pr!=null&&estBundle(p)&&Number(B.lotRemise)>0?`<p class="muted" style="margin-top:-6px">−${eur2(B.lotRemise)} par lot de ${Number(B.lotTaille)||3} bundles, appliqué dans le panier</p>`:""}
+      <p class="price">${pr!=null?eur(pr):"Prix sur demande"}</p>${pr!=null&&estBundle(p)&&(Number(B.lotPct)>0||Number(B.lotRemise)>0)?`<p class="muted" style="margin-top:-6px">${Number(B.lotPct)>0?`−${Number(B.lotPct)} % dès ${Number(B.lotTaille)||3} bundles`:`−${eur2(B.lotRemise)} par lot de ${Number(B.lotTaille)||3} bundles`}, appliqué dans le panier</p>`:""}
       ${s.description?`<div class="prose" style="color:var(--muted)">${paras(s.description)}</div>`:""}
       ${specs.length?`<dl class="specs">${specs.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
       <div class="actions">${pr!=null?`<button type="button" class="btn" data-add="${esc(p.id)}">${dispo(p)?"Ajouter au panier":`Commander · acompte ${Number(B.acomptePct)||40} %`}</button><a class="btn ghost" href="#reserver" data-scroll="reserver">Une question ?</a>`:`<a class="btn" href="#reserver" data-scroll="reserver">${dispo(p)?"Réserver cette création":"La commander"}</a>`}</div>
@@ -473,9 +473,9 @@ function totauxPanier(f){
   if(e&&e.valide&&!e.proprio&&!e.deja&&brut>=Number(e.min)){rate=Number(e.remise)/100;lib="Code "+e.code+" −"+e.remise+" %"}
   if(e&&e.valide&&e.proprio&&cag&&Number(e.solde)>0){rate=Math.min(Number(e.solde),brut)/brut;lib="Votre cagnotte"}
   /* remise par lot de bundles : un seul avantage, on garde le plus intéressant */
-  const nbB=L.reduce((t,l)=>t+(estBundle(l.p)?l.qte:0),0);const lotT=Number(B.lotTaille)||3;const lotTot=Number(B.lotRemise)>0?Math.floor(nbB/lotT)*Number(B.lotRemise):0;
+  const nbB=L.reduce((t,l)=>t+(estBundle(l.p)?l.qte:0),0);const lotT=Number(B.lotTaille)||3;const lotP=Number(B.lotPct)||0;const lotTot=lotP>0?(nbB>=lotT?L.reduce((t,l)=>t+(estBundle(l.p)?l.prix*l.qte*lotP/100:0),0):0):Number(B.lotRemise)>0?Math.floor(nbB/lotT)*Number(B.lotRemise):0;
   const remL=L.map(l=>rate?l.prix*l.qte*rate:0);
-  if(lotTot>0&&lotTot>remL.reduce((a,x)=>a+x,0)){L.forEach((l,i)=>remL[i]=estBundle(l.p)?lotTot*l.qte/nbB:0);lib="Lot de "+lotT+" bundles";if(e&&e.valide&&!e.proprio)lib+=" (plus avantageux que le code)"}
+  if(lotTot>0&&lotTot>remL.reduce((a,x)=>a+x,0)){L.forEach((l,i)=>remL[i]=estBundle(l.p)?(lotP>0?l.prix*l.qte*lotP/100:lotTot*l.qte/nbB):0);lib=lotP>0?"−"+lotP+" % dès "+lotT+" bundles":"Lot de "+lotT+" bundles";if(e&&e.valide&&!e.proprio)lib+=" (plus avantageux que le code)"}
   const plein=L.reduce((t,l)=>t+l.maintenant,0);
   const net=L.reduce((t,l,i)=>{const pu=r(l.prix-remL[i]/l.qte);return t+(l.stock?pu:r(pu*pct/100))*l.qte},0);
   rate=remL.some(x=>x>0)?1:0;
