@@ -213,7 +213,7 @@ function vPrestations(){
   ${c.image||c.video?`<section class="sec"><div class="wrap">${visual(c)}</div></section>`:""}`;
 }
 /* ---------- prise de rendez-vous : prestation, lieu, jour, heure ---------- */
-const RDV_DEF={actif:true,ville:"Cesson-Sévigné",origine:[48.1211,-1.6036],prestations:[{nom:"Pose de perruque",duree:120},{nom:"Pose de tissage",duree:180}],jours:{},fermes:[],pas:30,delaiH:24,horizonJ:45,marge:30,domicile:true,km:{tranche:5,prix:3,allerRetour:false,max:0}};
+const RDV_DEF={actif:true,ville:"Cesson-Sévigné",origine:[48.1211,-1.6036],prestations:[{nom:"Pose simple",duree:90},{nom:"Pose avec Layers",duree:120},{nom:"Pose de tissage",duree:120}],jours:{},fermes:[],pas:30,delaiH:24,horizonJ:45,marge:30,domicile:true,km:{tranche:5,prix:3,allerRetour:false,max:0}};
 function RC(){const c=Object.assign({},RDV_DEF,C.rdv||{});c.km=Object.assign({},RDV_DEF.km,(C.rdv||{}).km||{});return c}
 let RV={prest:null,lieu:"",adr:"",km:null,frais:null,geo:"",jour:"",heure:"",occ:null,voirPlus:false,envoye:null};
 const hm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
