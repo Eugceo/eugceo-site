@@ -233,7 +233,7 @@ function rdvCreneaux(jour,duree){
       if(occ.some(([s,e])=>t<e+marge&&t+duree+marge>s))continue;out.push(hm(t))}}
   return out}
 function rdvJours(duree){const c=RC();const out=[];const d=new Date();for(let i=0;i<(Number(c.horizonJ)||45);i++){const s=isoJour(d);const cr=rdvCreneaux(s,duree);if(cr.length)out.push([s,cr.length]);d.setDate(d.getDate()+1)}return out}
-function rdvFrais(km){const k=RC().km;const dist=k.allerRetour?km*2:km;return Math.ceil(dist/(Number(k.tranche)||5))*(Number(k.prix)||0)}
+function rdvFrais(km){const k=RC().km;if(Number(k.forfait)>0)return Number(k.forfait);const dist=k.allerRetour?km*2:km;return Math.ceil(dist/(Number(k.tranche)||5))*(Number(k.prix)||0)}
 async function rdvGeo(){
   const adr=RV.adr.trim();if(adr.length<6){RV.geo="Indiquez l'adresse complète (numéro, rue, code postal, ville).";RV.km=null;RV.frais=null;render(true);return}
   RV.geo="Calcul de la distance…";render(true);
@@ -261,7 +261,7 @@ function vRdv(){
   const s1=`<div class="rv-pills">${prests.map((x,i)=>`<button type="button" class="rv-pill" data-rv="prest" data-i="${i}" aria-pressed="${RV.prest===i}"><b>${esc(x.nom)}</b><span>environ ${esc(dureeTxt(Number(x.duree)))}</span></button>`).join("")}</div>`;
   const k=R.km;const s2=`<div class="rv-pills">
     <button type="button" class="rv-pill" data-rv="lieu" data-v="cesson" aria-pressed="${RV.lieu==="cesson"}"><b>À ${esc(R.ville)}</b><span>Adresse envoyée à la confirmation</span></button>
-    ${R.domicile!==false?`<button type="button" class="rv-pill" data-rv="lieu" data-v="domicile" aria-pressed="${RV.lieu==="domicile"}"><b>Chez vous</b><span>${esc(k.prix)} € par tranche de ${esc(k.tranche)} km${k.allerRetour?" (aller-retour)":""}</span></button>`:""}</div>
+    ${R.domicile!==false?`<button type="button" class="rv-pill" data-rv="lieu" data-v="domicile" aria-pressed="${RV.lieu==="domicile"}"><b>Chez vous</b><span>${Number(k.forfait)>0?"Déplacement : "+esc(k.forfait)+" €":esc(k.prix)+" € par tranche de "+esc(k.tranche)+" km"+(k.allerRetour?" (aller-retour)":"")}</span></button>`:""}</div>
     ${RV.lieu==="domicile"?`<div class="rv-adr"><div class="fld"><label for="rv_adr">Votre adresse</label><input id="rv_adr" autocomplete="street-address" maxlength="200" value="${esc(RV.adr)}" placeholder="Numéro, rue, code postal, ville"></div><button type="button" class="btn ghost" data-rv="geo">Calculer</button></div>
     ${RV.geo?`<p class="note-s rv-msg">${esc(RV.geo)}</p>`:""}${RV.km!=null?`<p class="rv-frais">Environ <b>${RV.km} km</b> depuis ${esc(R.ville)} · frais de déplacement <b>${RV.frais} €</b><br><span>Estimation : le montant exact est confirmé avec le rendez-vous.</span></p>`:""}`:""}`;
   const lieuOk=RV.lieu==="cesson"||(RV.lieu==="domicile"&&RV.km!=null);
